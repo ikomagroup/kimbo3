@@ -61,6 +61,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { exportEcritureToPDF } from '@/utils/pdfExport';
+import { DATimeline } from '@/components/ui/DATimeline';
 
 export default function ComptabiliteDetail() {
   const { id } = useParams<{ id: string }>();
@@ -107,6 +108,11 @@ export default function ComptabiliteDetail() {
           *,
           department:departments(id, name),
           created_by_profile:profiles!demandes_achat_created_by_fkey(id, first_name, last_name),
+          analyzed_by_profile:profiles!demandes_achat_analyzed_by_fkey(id, first_name, last_name),
+          priced_by_profile:profiles!demandes_achat_priced_by_fkey(id, first_name, last_name),
+          submitted_validation_by_profile:profiles!demandes_achat_submitted_validation_by_fkey(id, first_name, last_name),
+          validated_finance_by_profile:profiles!demandes_achat_validated_finance_by_fkey(id, first_name, last_name),
+          comptabilise_by_profile:profiles!demandes_achat_comptabilise_by_fkey(id, first_name, last_name),
           selected_fournisseur:fournisseurs(id, name, address, phone, email),
           besoin:besoins(id, title, user_id)
         `)
@@ -125,7 +131,7 @@ export default function ComptabiliteDetail() {
         return;
       }
 
-      setDA(data as DemandeAchat);
+      setDA(data as unknown as DemandeAchat);
       
       // Pré-remplir le formulaire si déjà enregistré
       if (data.syscohada_classe) {
@@ -639,6 +645,9 @@ export default function ComptabiliteDetail() {
             </Link>
           </CardContent>
         </Card>
+
+        {/* Timeline des actions */}
+        <DATimeline da={da as any} />
       </div>
 
       {/* Dialog confirmation paiement */}

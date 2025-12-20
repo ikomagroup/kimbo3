@@ -80,6 +80,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { exportDAToPDF } from '@/utils/pdfExport';
+import { DATimeline } from '@/components/ui/DATimeline';
 
 const statusColors: Record<DAStatus, string> = {
   brouillon: 'bg-muted text-muted-foreground',
@@ -171,6 +172,12 @@ export default function DADetail() {
           department:departments(id, name),
           created_by_profile:profiles!demandes_achat_created_by_fkey(id, first_name, last_name),
           rejected_by_profile:profiles!demandes_achat_rejected_by_fkey(id, first_name, last_name),
+          analyzed_by_profile:profiles!demandes_achat_analyzed_by_fkey(id, first_name, last_name),
+          priced_by_profile:profiles!demandes_achat_priced_by_fkey(id, first_name, last_name),
+          submitted_validation_by_profile:profiles!demandes_achat_submitted_validation_by_fkey(id, first_name, last_name),
+          validated_finance_by_profile:profiles!demandes_achat_validated_finance_by_fkey(id, first_name, last_name),
+          revision_requested_by_profile:profiles!demandes_achat_revision_requested_by_fkey(id, first_name, last_name),
+          comptabilise_by_profile:profiles!demandes_achat_comptabilise_by_fkey(id, first_name, last_name),
           selected_fournisseur:fournisseurs(id, name),
           besoin:besoins(id, title, user_id)
         `)
@@ -183,7 +190,7 @@ export default function DADetail() {
         return;
       }
 
-      setDA(data as DemandeAchat);
+      setDA(data as unknown as DemandeAchat);
       setJustification(data.fournisseur_justification || '');
     } catch (error: any) {
       console.error('Error:', error);
@@ -955,6 +962,9 @@ export default function DADetail() {
             )}
           </CardContent>
         </Card>
+
+        {/* Timeline des actions */}
+        <DATimeline da={da as any} />
 
         {/* Articles with prices */}
         <Card>
