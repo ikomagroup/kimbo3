@@ -23,62 +23,45 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { DemandeAchat, DA_STATUS_LABELS, DA_PRIORITY_LABELS, DAStatus } from '@/types/kpm';
-import { FileText, Search, Clock, Send, XCircle, BarChart3, CheckCircle, FileCheck, ShieldCheck, Ban, RotateCcw, Banknote, BookX } from 'lucide-react';
+import { DemandeAchat, DA_STATUS_LABELS, DAStatus } from '@/types/kpm';
+import { AccessDenied } from '@/components/ui/AccessDenied';
+import { BookOpen, Search, ShieldCheck, Banknote, BookX, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-const statusColors: Record<DAStatus, string> = {
-  brouillon: 'bg-muted text-muted-foreground',
-  soumise: 'bg-primary/10 text-primary border-primary/20',
-  en_analyse: 'bg-warning/10 text-warning border-warning/20',
-  chiffree: 'bg-success/10 text-success border-success/20',
-  soumise_validation: 'bg-accent/10 text-accent-foreground border-accent/20',
+const statusColors: Record<string, string> = {
   validee_finance: 'bg-success text-success-foreground',
-  refusee_finance: 'bg-destructive text-destructive-foreground',
-  en_revision_achats: 'bg-warning text-warning-foreground',
-  rejetee: 'bg-destructive/10 text-destructive border-destructive/20',
   payee: 'bg-success text-success-foreground',
   rejetee_comptabilite: 'bg-destructive text-destructive-foreground',
 };
 
-const statusIcons: Record<DAStatus, React.ElementType> = {
-  brouillon: Clock,
-  soumise: Send,
-  en_analyse: BarChart3,
-  chiffree: CheckCircle,
-  soumise_validation: FileCheck,
+const statusIcons: Record<string, React.ElementType> = {
   validee_finance: ShieldCheck,
-  refusee_finance: Ban,
-  en_revision_achats: RotateCcw,
-  rejetee: XCircle,
   payee: Banknote,
   rejetee_comptabilite: BookX,
 };
 
-const priorityColors: Record<string, string> = {
-  basse: 'bg-muted text-muted-foreground',
-  normale: 'bg-muted text-muted-foreground',
-  haute: 'bg-warning/10 text-warning',
-  urgente: 'bg-destructive/10 text-destructive',
-};
-
-export default function DAList() {
+export default function Comptabilite() {
   const { roles, isAdmin } = useAuth();
   const { toast } = useToast();
 
   const [demandes, setDemandes] = useState<DemandeAchat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('validee_finance');
 
-  const isLogistics = roles.some((r) => ['responsable_logistique', 'agent_logistique'].includes(r));
-  const isAchats = roles.some((r) => ['responsable_achats', 'agent_achats'].includes(r));
+  const isComptable = roles.includes('comptable');
   const isDG = roles.includes('dg');
+  const isDAF = roles.includes('daf');
+  const canAccess = isComptable || isAdmin || isDG || isDAF;
 
   useEffect(() => {
-    fetchDemandes();
-  }, []);
+    if (canAccess) {
+      fetchDemandes();
+    } else {
+      setIsLoading(false);
+    }
+  }, [canAccess]);
 
   const fetchDemandes = async () => {
     try {
@@ -88,8 +71,10 @@ export default function DAList() {
           *,
           department:departments(id, name),
           created_by_profile:profiles!demandes_achat_created_by_fkey(id, first_name, last_name),
+          selected_fournisseur:fournisseurs(id, name),
           besoin:besoins(id, title)
         `)
+        .in('status', ['validee_finance', 'payee', 'rejetee_comptabilite'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -102,6 +87,14 @@ export default function DAList() {
     }
   };
 
+  if (!canAccess) {
+    return (
+      <AppLayout>
+        <AccessDenied />
+      </AppLayout>
+    );
+  }
+
   const filteredDemandes = demandes.filter((da) => {
     const matchesSearch =
       da.reference.toLowerCase().includes(search.toLowerCase()) ||
@@ -110,6 +103,12 @@ export default function DAList() {
     return matchesSearch && matchesStatus;
   });
 
+  const pendingCount = demandes.filter((da) => da.status === 'validee_finance').length;
+  const paidCount = demandes.filter((da) => da.status === 'payee').length;
+  const totalPending = demandes
+    .filter((da) => da.status === 'validee_finance')
+    .reduce((sum, da) => sum + (da.total_amount || 0), 0);
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -117,22 +116,60 @@ export default function DAList() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-serif text-2xl font-bold text-foreground">
-              Demandes d'Achat
+              Comptabilité & SYSCOHADA
             </h1>
             <p className="text-muted-foreground">
-              Gérez les demandes d'achat issues des besoins internes
+              Rattachement comptable et exécution des paiements
             </p>
           </div>
+        </div>
+
+        {/* Statistiques */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card className="border-warning/50 bg-warning/5">
+            <CardContent className="flex items-center gap-4 py-4">
+              <div className="rounded-full bg-warning/10 p-3">
+                <AlertTriangle className="h-6 w-6 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{pendingCount}</p>
+                <p className="text-sm text-muted-foreground">DA à traiter</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-success/50 bg-success/5">
+            <CardContent className="flex items-center gap-4 py-4">
+              <div className="rounded-full bg-success/10 p-3">
+                <Banknote className="h-6 w-6 text-success" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{paidCount}</p>
+                <p className="text-sm text-muted-foreground">DA payées</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-primary/50 bg-primary/5">
+            <CardContent className="flex items-center gap-4 py-4">
+              <div className="rounded-full bg-primary/10 p-3">
+                <BookOpen className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalPending.toLocaleString()} XAF</p>
+                <p className="text-sm text-muted-foreground">Montant en attente</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Info banner */}
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="flex items-start gap-3 py-4">
-            <FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div>
-              <p className="font-medium text-foreground">Document administratif</p>
+              <p className="font-medium text-foreground">Module d'exécution comptable</p>
               <p className="text-sm text-muted-foreground">
-                Une DA est créée par la Logistique à partir d'un Besoin accepté. Elle ne contient aucune donnée financière.
+                Rattachez les DA au plan comptable SYSCOHADA avant de déclencher le paiement. 
+                Toute écriture validée est irréversible.
               </p>
             </div>
           </CardContent>
@@ -148,7 +185,7 @@ export default function DAList() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher par référence ou description..."
+                  placeholder="Rechercher par référence..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10"
@@ -156,15 +193,13 @@ export default function DAList() {
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Tous les statuts" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les statuts</SelectItem>
-                  {(Object.keys(DA_STATUS_LABELS) as DAStatus[]).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {DA_STATUS_LABELS[status]}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="validee_finance">À traiter</SelectItem>
+                  <SelectItem value="payee">Payées</SelectItem>
+                  <SelectItem value="rejetee_comptabilite">Rejetées</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -177,6 +212,11 @@ export default function DAList() {
             <CardTitle>
               {filteredDemandes.length} demande{filteredDemandes.length !== 1 ? 's' : ''}
             </CardTitle>
+            <CardDescription>
+              {isComptable 
+                ? 'Cliquez sur une DA pour procéder au rattachement comptable et au paiement.' 
+                : 'Vue en lecture seule des opérations comptables.'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -185,7 +225,7 @@ export default function DAList() {
               </div>
             ) : filteredDemandes.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
-                Aucune demande d'achat trouvée.
+                Aucune demande à afficher.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -193,42 +233,40 @@ export default function DAList() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Référence</TableHead>
-                      <TableHead>Besoin source</TableHead>
-                      <TableHead>Département</TableHead>
-                      <TableHead>Priorité</TableHead>
+                      <TableHead>Fournisseur</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
                       <TableHead>Statut</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Validée le</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredDemandes.map((da) => {
-                      const StatusIcon = statusIcons[da.status];
+                      const StatusIcon = statusIcons[da.status] || ShieldCheck;
                       return (
                         <TableRow key={da.id}>
                           <TableCell className="font-medium">{da.reference}</TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {(da.besoin as any)?.title || 'N/A'}
-                          </TableCell>
-                          <TableCell>{da.department?.name || 'N/A'}</TableCell>
                           <TableCell>
-                            <Badge className={priorityColors[da.priority]}>
-                              {DA_PRIORITY_LABELS[da.priority]}
-                            </Badge>
+                            {(da.selected_fournisseur as any)?.name || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {da.total_amount?.toLocaleString()} {da.currency}
                           </TableCell>
                           <TableCell>
-                            <Badge className={statusColors[da.status]}>
+                            <Badge className={statusColors[da.status] || 'bg-muted'}>
                               <StatusIcon className="mr-1 h-3 w-3" />
-                              {DA_STATUS_LABELS[da.status]}
+                              {DA_STATUS_LABELS[da.status as DAStatus]}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {format(new Date(da.created_at), 'dd MMM yyyy', { locale: fr })}
+                            {da.validated_finance_at 
+                              ? format(new Date(da.validated_finance_at), 'dd MMM yyyy', { locale: fr })
+                              : '-'}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Link to={`/demandes-achat/${da.id}`}>
-                              <Button variant="ghost" size="sm">
-                                Voir
+                            <Link to={`/comptabilite/${da.id}`}>
+                              <Button variant={da.status === 'validee_finance' ? 'default' : 'ghost'} size="sm">
+                                {da.status === 'validee_finance' ? 'Traiter' : 'Voir'}
                               </Button>
                             </Link>
                           </TableCell>

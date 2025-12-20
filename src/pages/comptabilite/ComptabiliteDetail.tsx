@@ -1,0 +1,654 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DemandeAchat,
+  DA_STATUS_LABELS,
+  DA_CATEGORY_LABELS,
+  DAStatus,
+  Fournisseur,
+  SYSCOHADA_CLASSES,
+  MODES_PAIEMENT,
+} from '@/types/kpm';
+import { AccessDenied } from '@/components/ui/AccessDenied';
+import {
+  ArrowLeft,
+  BookOpen,
+  Building2,
+  DollarSign,
+  FileText,
+  ExternalLink,
+  Banknote,
+  BookX,
+  ShieldCheck,
+  AlertTriangle,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+export default function ComptabiliteDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user, roles, isAdmin } = useAuth();
+  const { toast } = useToast();
+
+  const [da, setDA] = useState<DemandeAchat | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPayDialog, setShowPayDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // Formulaire SYSCOHADA
+  const [syscohadaForm, setSyscohadaForm] = useState({
+    classe: '',
+    compte: '',
+    nature_charge: '',
+    centre_cout: '',
+    mode_paiement: '',
+    reference_paiement: '',
+  });
+
+  const isComptable = roles.includes('comptable');
+  const isDG = roles.includes('dg');
+  const isDAF = roles.includes('daf');
+  const canAccess = isComptable || isAdmin || isDG || isDAF;
+  const canProcess = isComptable && da?.status === 'validee_finance';
+
+  useEffect(() => {
+    if (id && canAccess) {
+      fetchDA();
+    } else if (!canAccess) {
+      setIsLoading(false);
+    }
+  }, [id, canAccess]);
+
+  const fetchDA = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('demandes_achat')
+        .select(`
+          *,
+          department:departments(id, name),
+          created_by_profile:profiles!demandes_achat_created_by_fkey(id, first_name, last_name),
+          selected_fournisseur:fournisseurs(id, name, address, phone, email),
+          besoin:besoins(id, title, user_id)
+        `)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error || !data) {
+        toast({ title: 'Erreur', description: 'DA introuvable.', variant: 'destructive' });
+        navigate('/comptabilite');
+        return;
+      }
+
+      if (!['validee_finance', 'payee', 'rejetee_comptabilite'].includes(data.status)) {
+        toast({ title: 'Accès refusé', description: 'Cette DA n\'est pas accessible en comptabilité.', variant: 'destructive' });
+        navigate('/comptabilite');
+        return;
+      }
+
+      setDA(data as DemandeAchat);
+      
+      // Pré-remplir le formulaire si déjà enregistré
+      if (data.syscohada_classe) {
+        setSyscohadaForm({
+          classe: data.syscohada_classe.toString(),
+          compte: data.syscohada_compte || '',
+          nature_charge: data.syscohada_nature_charge || '',
+          centre_cout: data.syscohada_centre_cout || '',
+          mode_paiement: data.mode_paiement || '',
+          reference_paiement: data.reference_paiement || '',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const validateSyscohadaForm = (): boolean => {
+    if (!syscohadaForm.classe) {
+      toast({ title: 'Erreur', description: 'La classe SYSCOHADA est obligatoire.', variant: 'destructive' });
+      return false;
+    }
+    if (!syscohadaForm.compte.trim()) {
+      toast({ title: 'Erreur', description: 'Le compte comptable est obligatoire.', variant: 'destructive' });
+      return false;
+    }
+    if (!syscohadaForm.nature_charge.trim()) {
+      toast({ title: 'Erreur', description: 'La nature de charge est obligatoire.', variant: 'destructive' });
+      return false;
+    }
+    if (!syscohadaForm.mode_paiement) {
+      toast({ title: 'Erreur', description: 'Le mode de paiement est obligatoire.', variant: 'destructive' });
+      return false;
+    }
+    return true;
+  };
+
+  const handlePay = async () => {
+    if (!da || !validateSyscohadaForm()) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('demandes_achat')
+        .update({
+          status: 'payee',
+          syscohada_classe: parseInt(syscohadaForm.classe),
+          syscohada_compte: syscohadaForm.compte.trim(),
+          syscohada_nature_charge: syscohadaForm.nature_charge.trim(),
+          syscohada_centre_cout: syscohadaForm.centre_cout.trim() || null,
+          mode_paiement: syscohadaForm.mode_paiement,
+          reference_paiement: syscohadaForm.reference_paiement.trim() || null,
+          comptabilise_by: user?.id,
+          comptabilise_at: new Date().toISOString(),
+        })
+        .eq('id', da.id);
+
+      if (error) throw error;
+
+      toast({ 
+        title: 'Paiement enregistré', 
+        description: 'La DA a été marquée comme payée et les écritures comptables ont été créées.' 
+      });
+      setShowPayDialog(false);
+      fetchDA();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!da || !rejectionReason.trim()) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('demandes_achat')
+        .update({
+          status: 'rejetee_comptabilite',
+          comptabilite_rejection_reason: rejectionReason.trim(),
+          comptabilise_by: user?.id,
+          comptabilise_at: new Date().toISOString(),
+        })
+        .eq('id', da.id);
+
+      if (error) throw error;
+
+      toast({ title: 'DA rejetée', description: 'Le DAF et la Logistique ont été notifiés.' });
+      setShowRejectDialog(false);
+      fetchDA();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!canAccess) {
+    return (
+      <AppLayout>
+        <AccessDenied />
+      </AppLayout>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!da) return null;
+
+  const statusColor = da.status === 'payee' 
+    ? 'bg-success text-success-foreground' 
+    : da.status === 'rejetee_comptabilite' 
+    ? 'bg-destructive text-destructive-foreground'
+    : 'bg-warning text-warning-foreground';
+
+  return (
+    <AppLayout>
+      <div className="mx-auto max-w-4xl space-y-6">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link to="/comptabilite">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-serif text-2xl font-bold text-foreground">{da.reference}</h1>
+                <Badge className={statusColor}>
+                  {DA_STATUS_LABELS[da.status as DAStatus]}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground">
+                Traitement comptable
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bannière statut final */}
+        {da.status === 'payee' && (
+          <Card className="border-success bg-success/10">
+            <CardContent className="flex items-center gap-3 py-4">
+              <Banknote className="h-6 w-6 text-success" />
+              <div>
+                <p className="font-bold text-success">Paiement effectué</p>
+                <p className="text-sm text-foreground">
+                  Cette DA a été payée le {da.comptabilise_at && format(new Date(da.comptabilise_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}.
+                  {da.mode_paiement && ` Mode: ${da.mode_paiement}.`}
+                  {da.reference_paiement && ` Réf: ${da.reference_paiement}.`}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {da.status === 'rejetee_comptabilite' && (
+          <Card className="border-destructive bg-destructive/10">
+            <CardContent className="flex items-center gap-3 py-4">
+              <BookX className="h-6 w-6 text-destructive" />
+              <div>
+                <p className="font-bold text-destructive">Rejetée par la Comptabilité</p>
+                <p className="text-sm text-foreground">
+                  {da.comptabilite_rejection_reason || 'Aucun motif spécifié.'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Panneau d'action pour comptable */}
+        {canProcess && (
+          <Card className="border-2 border-warning bg-gradient-to-r from-warning/5 to-primary/5">
+            <CardContent className="space-y-6 py-6">
+              <div className="flex items-center gap-3">
+                <BookOpen className="h-8 w-8 text-warning" />
+                <div>
+                  <p className="text-lg font-bold text-foreground">Rattachement SYSCOHADA obligatoire</p>
+                  <p className="text-sm text-muted-foreground">
+                    Renseignez les informations comptables avant de procéder au paiement.
+                  </p>
+                </div>
+              </div>
+
+              {/* Formulaire SYSCOHADA */}
+              <div className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Classe SYSCOHADA *</Label>
+                  <Select 
+                    value={syscohadaForm.classe} 
+                    onValueChange={(v) => setSyscohadaForm({ ...syscohadaForm, classe: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une classe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SYSCOHADA_CLASSES).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>
+                          Classe {key} - {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Compte comptable *</Label>
+                  <Input
+                    placeholder="Ex: 6011, 6221..."
+                    value={syscohadaForm.compte}
+                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, compte: e.target.value })}
+                    maxLength={20}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Nature de charge *</Label>
+                  <Input
+                    placeholder="Ex: Achats de marchandises"
+                    value={syscohadaForm.nature_charge}
+                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, nature_charge: e.target.value })}
+                    maxLength={100}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Centre de coût</Label>
+                  <Input
+                    placeholder="Ex: Direction, Production..."
+                    value={syscohadaForm.centre_cout}
+                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, centre_cout: e.target.value })}
+                    maxLength={50}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Mode de paiement *</Label>
+                  <Select 
+                    value={syscohadaForm.mode_paiement} 
+                    onValueChange={(v) => setSyscohadaForm({ ...syscohadaForm, mode_paiement: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MODES_PAIEMENT.map((mode) => (
+                        <SelectItem key={mode} value={mode}>{mode}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Référence paiement</Label>
+                  <Input
+                    placeholder="Ex: CHQ-2024-001"
+                    value={syscohadaForm.reference_paiement}
+                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, reference_paiement: e.target.value })}
+                    maxLength={50}
+                  />
+                </div>
+              </div>
+
+              {/* Message d'avertissement */}
+              <div className="flex items-start gap-3 rounded-lg border border-warning/50 bg-warning/10 p-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+                <p className="text-sm text-foreground">
+                  Cette opération crée une écriture comptable irréversible. Vérifiez toutes les informations avant de valider.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-wrap gap-3">
+                <Button 
+                  onClick={() => setShowPayDialog(true)} 
+                  className="bg-success hover:bg-success/90"
+                  disabled={isSaving}
+                >
+                  <Banknote className="mr-2 h-4 w-4" />
+                  Enregistrer le paiement
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowRejectDialog(true)}
+                  disabled={isSaving}
+                >
+                  <BookX className="mr-2 h-4 w-4" />
+                  Rejeter
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Récapitulatif montant */}
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="flex items-center gap-4 py-6">
+            <div className="rounded-full bg-primary/10 p-4">
+              <DollarSign className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-foreground">
+                {da.total_amount?.toLocaleString()} {da.currency}
+              </p>
+              <p className="text-muted-foreground">Montant total à payer</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Fournisseur */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building2 className="h-5 w-5" />
+              Fournisseur
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {da.selected_fournisseur ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Nom</p>
+                  <p className="font-medium">{(da.selected_fournisseur as Fournisseur).name}</p>
+                </div>
+                {(da.selected_fournisseur as Fournisseur).phone && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Téléphone</p>
+                    <p className="font-medium">{(da.selected_fournisseur as Fournisseur).phone}</p>
+                  </div>
+                )}
+                {(da.selected_fournisseur as Fournisseur).email && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-medium">{(da.selected_fournisseur as Fournisseur).email}</p>
+                  </div>
+                )}
+                {(da.selected_fournisseur as Fournisseur).address && (
+                  <div className="sm:col-span-2">
+                    <p className="text-sm text-muted-foreground">Adresse</p>
+                    <p className="font-medium">{(da.selected_fournisseur as Fournisseur).address}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Fournisseur non spécifié</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Informations comptables si payée */}
+        {da.status === 'payee' && da.syscohada_classe && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <BookOpen className="h-5 w-5" />
+                Rattachement SYSCOHADA
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Classe</p>
+                  <p className="font-medium">
+                    Classe {da.syscohada_classe} - {SYSCOHADA_CLASSES[da.syscohada_classe]}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Compte</p>
+                  <p className="font-medium">{da.syscohada_compte}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Nature de charge</p>
+                  <p className="font-medium">{da.syscohada_nature_charge}</p>
+                </div>
+                {da.syscohada_centre_cout && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Centre de coût</p>
+                    <p className="font-medium">{da.syscohada_centre_cout}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Détails DA */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Détails de la demande</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-sm text-muted-foreground">Département</p>
+                <p className="font-medium">{da.department?.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Catégorie</p>
+                <Badge variant="outline">{DA_CATEGORY_LABELS[da.category]}</Badge>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Validée financièrement le</p>
+                <p className="font-medium">
+                  {da.validated_finance_at 
+                    ? format(new Date(da.validated_finance_at), 'dd MMMM yyyy à HH:mm', { locale: fr })
+                    : 'N/A'}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm text-muted-foreground">Description</p>
+              <p className="whitespace-pre-wrap text-foreground">{da.description}</p>
+            </div>
+
+            {da.fournisseur_justification && (
+              <div className="border-t pt-4">
+                <p className="mb-2 text-sm text-muted-foreground">Justification Achats</p>
+                <p className="whitespace-pre-wrap text-foreground">{da.fournisseur_justification}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Lien vers besoin source */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-5 w-5" />
+              Besoin source
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link to={`/besoins/${da.besoin_id}`} className="flex items-center gap-2 text-primary hover:underline">
+              {(da.besoin as any)?.title || 'Voir le besoin'}
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Dialog confirmation paiement */}
+      <AlertDialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Banknote className="h-5 w-5 text-success" />
+              Confirmer le paiement ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette opération crée une écriture comptable irréversible. 
+              Le montant de <strong>{da.total_amount?.toLocaleString()} {da.currency}</strong> sera 
+              enregistré comme payé au fournisseur <strong>{(da.selected_fournisseur as Fournisseur)?.name}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-lg border bg-muted/50 p-3">
+            <p className="text-xs text-muted-foreground">Rattachement comptable</p>
+            <p className="font-medium">
+              Classe {syscohadaForm.classe} • {syscohadaForm.compte} • {syscohadaForm.nature_charge}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Mode: {syscohadaForm.mode_paiement}
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handlePay} 
+              className="bg-success text-success-foreground hover:bg-success/90"
+              disabled={isSaving}
+            >
+              Confirmer le paiement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog rejet */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <BookX className="h-5 w-5" />
+              Rejeter cette DA
+            </DialogTitle>
+            <DialogDescription>
+              Cette action bloque définitivement la demande. Indiquez le motif du rejet.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            <Label>Motif du rejet *</Label>
+            <Textarea
+              placeholder="Expliquez pourquoi cette DA ne peut pas être payée..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              rows={4}
+              maxLength={500}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>Annuler</Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleReject} 
+              disabled={!rejectionReason.trim() || isSaving}
+            >
+              Confirmer le rejet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </AppLayout>
+  );
+}

@@ -378,6 +378,9 @@ export type Database = {
           analyzed_by: string | null
           besoin_id: string
           category: Database["public"]["Enums"]["da_category"]
+          comptabilise_at: string | null
+          comptabilise_by: string | null
+          comptabilite_rejection_reason: string | null
           created_at: string
           created_by: string
           currency: string | null
@@ -387,11 +390,13 @@ export type Database = {
           finance_decision_comment: string | null
           fournisseur_justification: string | null
           id: string
+          mode_paiement: string | null
           observations: string | null
           priced_at: string | null
           priced_by: string | null
           priority: Database["public"]["Enums"]["da_priority"]
           reference: string
+          reference_paiement: string | null
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
@@ -403,6 +408,10 @@ export type Database = {
           submitted_at: string | null
           submitted_validation_at: string | null
           submitted_validation_by: string | null
+          syscohada_centre_cout: string | null
+          syscohada_classe: number | null
+          syscohada_compte: string | null
+          syscohada_nature_charge: string | null
           total_amount: number | null
           updated_at: string
           validated_finance_at: string | null
@@ -413,6 +422,9 @@ export type Database = {
           analyzed_by?: string | null
           besoin_id: string
           category: Database["public"]["Enums"]["da_category"]
+          comptabilise_at?: string | null
+          comptabilise_by?: string | null
+          comptabilite_rejection_reason?: string | null
           created_at?: string
           created_by: string
           currency?: string | null
@@ -422,11 +434,13 @@ export type Database = {
           finance_decision_comment?: string | null
           fournisseur_justification?: string | null
           id?: string
+          mode_paiement?: string | null
           observations?: string | null
           priced_at?: string | null
           priced_by?: string | null
           priority?: Database["public"]["Enums"]["da_priority"]
           reference: string
+          reference_paiement?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
@@ -438,6 +452,10 @@ export type Database = {
           submitted_at?: string | null
           submitted_validation_at?: string | null
           submitted_validation_by?: string | null
+          syscohada_centre_cout?: string | null
+          syscohada_classe?: number | null
+          syscohada_compte?: string | null
+          syscohada_nature_charge?: string | null
           total_amount?: number | null
           updated_at?: string
           validated_finance_at?: string | null
@@ -448,6 +466,9 @@ export type Database = {
           analyzed_by?: string | null
           besoin_id?: string
           category?: Database["public"]["Enums"]["da_category"]
+          comptabilise_at?: string | null
+          comptabilise_by?: string | null
+          comptabilite_rejection_reason?: string | null
           created_at?: string
           created_by?: string
           currency?: string | null
@@ -457,11 +478,13 @@ export type Database = {
           finance_decision_comment?: string | null
           fournisseur_justification?: string | null
           id?: string
+          mode_paiement?: string | null
           observations?: string | null
           priced_at?: string | null
           priced_by?: string | null
           priority?: Database["public"]["Enums"]["da_priority"]
           reference?: string
+          reference_paiement?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
@@ -473,6 +496,10 @@ export type Database = {
           submitted_at?: string | null
           submitted_validation_at?: string | null
           submitted_validation_by?: string | null
+          syscohada_centre_cout?: string | null
+          syscohada_classe?: number | null
+          syscohada_compte?: string | null
+          syscohada_nature_charge?: string | null
           total_amount?: number | null
           updated_at?: string
           validated_finance_at?: string | null
@@ -491,6 +518,13 @@ export type Database = {
             columns: ["besoin_id"]
             isOneToOne: false
             referencedRelation: "besoins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_achat_comptabilise_by_fkey"
+            columns: ["comptabilise_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -577,6 +611,97 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ecritures_comptables: {
+        Row: {
+          centre_cout: string | null
+          classe_syscohada: number
+          compte_comptable: string
+          created_at: string
+          created_by: string | null
+          credit: number
+          da_id: string
+          date_ecriture: string
+          debit: number
+          devise: string
+          id: string
+          is_validated: boolean
+          libelle: string
+          mode_paiement: string | null
+          nature_charge: string
+          observations: string | null
+          reference: string
+          reference_paiement: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          centre_cout?: string | null
+          classe_syscohada: number
+          compte_comptable: string
+          created_at?: string
+          created_by?: string | null
+          credit?: number
+          da_id: string
+          date_ecriture?: string
+          debit?: number
+          devise?: string
+          id?: string
+          is_validated?: boolean
+          libelle: string
+          mode_paiement?: string | null
+          nature_charge: string
+          observations?: string | null
+          reference: string
+          reference_paiement?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          centre_cout?: string | null
+          classe_syscohada?: number
+          compte_comptable?: string
+          created_at?: string
+          created_by?: string | null
+          credit?: number
+          da_id?: string
+          date_ecriture?: string
+          debit?: number
+          devise?: string
+          id?: string
+          is_validated?: boolean
+          libelle?: string
+          mode_paiement?: string | null
+          nature_charge?: string
+          observations?: string | null
+          reference?: string
+          reference_paiement?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecritures_comptables_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_da_id_fkey"
+            columns: ["da_id"]
+            isOneToOne: false
+            referencedRelation: "demandes_achat"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fournisseurs: {
         Row: {
@@ -839,6 +964,7 @@ export type Database = {
       }
       generate_bl_reference: { Args: never; Returns: string }
       generate_da_reference: { Args: never; Returns: string }
+      generate_ecriture_reference: { Args: never; Returns: string }
       get_user_department: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -849,6 +975,7 @@ export type Database = {
       }
       is_achats: { Args: { _user_id: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_comptable: { Args: { _user_id: string }; Returns: boolean }
       is_dg: { Args: { _user_id: string }; Returns: boolean }
       is_logistics: { Args: { _user_id: string }; Returns: boolean }
     }
