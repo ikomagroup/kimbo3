@@ -75,9 +75,11 @@ import {
   ShieldCheck,
   Banknote,
   BookX,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { exportDAToPDF } from '@/utils/pdfExport';
 
 const statusColors: Record<DAStatus, string> = {
   brouillon: 'bg-muted text-muted-foreground',
@@ -524,6 +526,37 @@ export default function DADetail() {
   const StatusIcon = statusIcons[da.status];
   const total = calculateTotal();
 
+  const handleExportPDF = () => {
+    const articlesWithPrices = articles.map(art => {
+      const prices = articlePrices[art.id] || [];
+      const selectedPrice = prices.find(p => p.is_selected);
+      return {
+        designation: art.designation,
+        quantity: art.quantity,
+        unit: art.unit,
+        unitPrice: selectedPrice?.unit_price,
+        total: selectedPrice ? selectedPrice.unit_price * art.quantity : undefined,
+      };
+    });
+
+    exportDAToPDF({
+      reference: da.reference,
+      status: DA_STATUS_LABELS[da.status],
+      department: da.department?.name || 'N/A',
+      category: DA_CATEGORY_LABELS[da.category],
+      priority: DA_PRIORITY_LABELS[da.priority],
+      description: da.description,
+      createdAt: format(new Date(da.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr }),
+      createdBy: da.created_by_profile 
+        ? `${da.created_by_profile.first_name || ''} ${da.created_by_profile.last_name || ''}`.trim() 
+        : 'N/A',
+      totalAmount: da.total_amount,
+      currency: da.currency || 'XAF',
+      fournisseur: da.selected_fournisseur?.name,
+      articles: articlesWithPrices,
+    });
+  };
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-4xl space-y-6">
@@ -549,17 +582,27 @@ export default function DADetail() {
             </div>
           </div>
 
-          {canDelete && (
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:bg-destructive/10"
-              onClick={() => setShowDeleteDialog(true)}
+              onClick={handleExportPDF}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer
+              <Download className="mr-2 h-4 w-4" />
+              Exporter PDF
             </Button>
-          )}
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Rejection reason */}
