@@ -84,6 +84,13 @@ const blNavItem: NavItem = {
   roles: ['admin', 'dg', 'responsable_logistique', 'agent_logistique'],
 };
 
+const fournisseursNavItem: NavItem = {
+  label: 'Fournisseurs',
+  href: '/fournisseurs',
+  icon: Building2,
+  roles: ['admin', 'responsable_achats', 'agent_achats'],
+};
+
 // Modules métier (désactivés pour l'instant)
 const businessModules: NavItem[] = [
   { label: 'Stock', href: '/stock', icon: Package },
@@ -210,6 +217,7 @@ export function Sidebar() {
           {hasAccess(besoinNavItem) && renderNavItem(besoinNavItem)}
           {hasAccess(daNavItem) && renderNavItem(daNavItem)}
           {hasAccess(blNavItem) && renderNavItem(blNavItem)}
+          {hasAccess(fournisseursNavItem) && renderNavItem(fournisseursNavItem)}
 
           {/* Modules métier (désactivés) */}
           <div className="mt-6 border-t border-sidebar-border pt-4">

@@ -24,19 +24,25 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { DemandeAchat, DA_STATUS_LABELS, DA_PRIORITY_LABELS, DAStatus } from '@/types/kpm';
-import { FileText, Search, Clock, Send, XCircle } from 'lucide-react';
+import { FileText, Search, Clock, Send, XCircle, BarChart3, CheckCircle, FileCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const statusColors: Record<DAStatus, string> = {
   brouillon: 'bg-muted text-muted-foreground',
   soumise: 'bg-primary/10 text-primary border-primary/20',
+  en_analyse: 'bg-warning/10 text-warning border-warning/20',
+  chiffree: 'bg-success/10 text-success border-success/20',
+  soumise_validation: 'bg-accent/10 text-accent-foreground border-accent/20',
   rejetee: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
 const statusIcons: Record<DAStatus, React.ElementType> = {
   brouillon: Clock,
   soumise: Send,
+  en_analyse: BarChart3,
+  chiffree: CheckCircle,
+  soumise_validation: FileCheck,
   rejetee: XCircle,
 };
 

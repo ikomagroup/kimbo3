@@ -273,6 +273,67 @@ export type Database = {
           },
         ]
       }
+      da_article_prices: {
+        Row: {
+          conditions: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          da_article_id: string
+          delivery_delay: string | null
+          fournisseur_id: string
+          id: string
+          is_selected: boolean
+          unit_price: number
+        }
+        Insert: {
+          conditions?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          da_article_id: string
+          delivery_delay?: string | null
+          fournisseur_id: string
+          id?: string
+          is_selected?: boolean
+          unit_price: number
+        }
+        Update: {
+          conditions?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          da_article_id?: string
+          delivery_delay?: string | null
+          fournisseur_id?: string
+          id?: string
+          is_selected?: boolean
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "da_article_prices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "da_article_prices_da_article_id_fkey"
+            columns: ["da_article_id"]
+            isOneToOne: false
+            referencedRelation: "da_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "da_article_prices_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       da_articles: {
         Row: {
           created_at: string
@@ -313,63 +374,100 @@ export type Database = {
       }
       demandes_achat: {
         Row: {
+          analyzed_at: string | null
+          analyzed_by: string | null
           besoin_id: string
           category: Database["public"]["Enums"]["da_category"]
           created_at: string
           created_by: string
+          currency: string | null
           department_id: string
           description: string
           desired_date: string | null
+          fournisseur_justification: string | null
           id: string
           observations: string | null
+          priced_at: string | null
+          priced_by: string | null
           priority: Database["public"]["Enums"]["da_priority"]
           reference: string
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
+          selected_fournisseur_id: string | null
           status: Database["public"]["Enums"]["da_status"]
           submitted_at: string | null
+          submitted_validation_at: string | null
+          submitted_validation_by: string | null
+          total_amount: number | null
           updated_at: string
         }
         Insert: {
+          analyzed_at?: string | null
+          analyzed_by?: string | null
           besoin_id: string
           category: Database["public"]["Enums"]["da_category"]
           created_at?: string
           created_by: string
+          currency?: string | null
           department_id: string
           description: string
           desired_date?: string | null
+          fournisseur_justification?: string | null
           id?: string
           observations?: string | null
+          priced_at?: string | null
+          priced_by?: string | null
           priority?: Database["public"]["Enums"]["da_priority"]
           reference: string
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          selected_fournisseur_id?: string | null
           status?: Database["public"]["Enums"]["da_status"]
           submitted_at?: string | null
+          submitted_validation_at?: string | null
+          submitted_validation_by?: string | null
+          total_amount?: number | null
           updated_at?: string
         }
         Update: {
+          analyzed_at?: string | null
+          analyzed_by?: string | null
           besoin_id?: string
           category?: Database["public"]["Enums"]["da_category"]
           created_at?: string
           created_by?: string
+          currency?: string | null
           department_id?: string
           description?: string
           desired_date?: string | null
+          fournisseur_justification?: string | null
           id?: string
           observations?: string | null
+          priced_at?: string | null
+          priced_by?: string | null
           priority?: Database["public"]["Enums"]["da_priority"]
           reference?: string
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
+          selected_fournisseur_id?: string | null
           status?: Database["public"]["Enums"]["da_status"]
           submitted_at?: string | null
+          submitted_validation_at?: string | null
+          submitted_validation_by?: string | null
+          total_amount?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "demandes_achat_analyzed_by_fkey"
+            columns: ["analyzed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "demandes_achat_besoin_id_fkey"
             columns: ["besoin_id"]
@@ -392,8 +490,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "demandes_achat_priced_by_fkey"
+            columns: ["priced_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "demandes_achat_rejected_by_fkey"
             columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_achat_selected_fournisseur_id_fkey"
+            columns: ["selected_fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_achat_submitted_validation_by_fkey"
+            columns: ["submitted_validation_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -426,6 +545,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      fournisseurs: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fournisseurs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
