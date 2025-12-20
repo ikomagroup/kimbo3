@@ -55,9 +55,11 @@ import {
   AlertTriangle,
   XCircle,
   PackageCheck,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { exportBLToPDF } from '@/utils/pdfExport';
 
 const statusColors: Record<BLStatus, string> = {
   prepare: 'bg-muted text-muted-foreground',
@@ -325,6 +327,32 @@ export default function BLDetail() {
 
   const StatusIcon = statusIcons[bl.status];
 
+  const handleExportPDF = () => {
+    exportBLToPDF({
+      reference: bl.reference,
+      status: BL_STATUS_LABELS[bl.status],
+      department: bl.department?.name || 'N/A',
+      warehouse: bl.warehouse || undefined,
+      blType: bl.bl_type === 'interne' ? 'Depuis stock' : 'Fournisseur externe',
+      deliveryDate: bl.delivery_date 
+        ? format(new Date(bl.delivery_date), 'dd MMMM yyyy', { locale: fr }) 
+        : undefined,
+      createdAt: format(new Date(bl.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr }),
+      createdBy: bl.created_by_profile 
+        ? `${bl.created_by_profile.first_name || ''} ${bl.created_by_profile.last_name || ''}`.trim() 
+        : 'N/A',
+      besoinTitle: bl.besoin?.title || 'N/A',
+      observations: bl.observations || undefined,
+      articles: articles.map(art => ({
+        designation: art.designation,
+        quantityOrdered: art.quantity_ordered || art.quantity,
+        quantityDelivered: art.quantity_delivered || 0,
+        unit: art.unit,
+        ecartReason: art.ecart_reason || undefined,
+      })),
+    });
+  };
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-3xl space-y-6">
@@ -352,17 +380,27 @@ export default function BLDetail() {
             </div>
           </div>
 
-          {canDelete && (
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:bg-destructive/10"
-              onClick={() => setShowDeleteDialog(true)}
+              onClick={handleExportPDF}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer
+              <Download className="mr-2 h-4 w-4" />
+              Exporter PDF
             </Button>
-          )}
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Actions */}

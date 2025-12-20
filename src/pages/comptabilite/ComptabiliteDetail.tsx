@@ -56,9 +56,11 @@ import {
   BookX,
   ShieldCheck,
   AlertTriangle,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { exportEcritureToPDF } from '@/utils/pdfExport';
 
 export default function ComptabiliteDetail() {
   const { id } = useParams<{ id: string }>();
@@ -251,6 +253,40 @@ export default function ComptabiliteDetail() {
     ? 'bg-destructive text-destructive-foreground'
     : 'bg-warning text-warning-foreground';
 
+  const handleExportPDF = () => {
+    if (da.status !== 'payee' || !da.syscohada_classe) {
+      return; // Only export if DA is paid and has SYSCOHADA info
+    }
+    
+    exportEcritureToPDF({
+      reference: `EC-${da.reference}`,
+      daReference: da.reference,
+      libelle: `Paiement ${da.reference} - ${da.selected_fournisseur?.name || 'N/A'}`,
+      dateEcriture: da.comptabilise_at 
+        ? format(new Date(da.comptabilise_at), 'dd MMMM yyyy', { locale: fr })
+        : format(new Date(), 'dd MMMM yyyy', { locale: fr }),
+      classesSyscohada: da.syscohada_classe,
+      compteComptable: da.syscohada_compte || 'N/A',
+      natureCharge: da.syscohada_nature_charge || 'N/A',
+      centreCout: da.syscohada_centre_cout || undefined,
+      debit: da.total_amount || 0,
+      credit: 0,
+      devise: da.currency || 'XAF',
+      modePaiement: da.mode_paiement || undefined,
+      referencePaiement: da.reference_paiement || undefined,
+      isValidated: true,
+      validatedAt: da.comptabilise_at 
+        ? format(new Date(da.comptabilise_at), 'dd MMMM yyyy à HH:mm', { locale: fr })
+        : undefined,
+      validatedBy: 'Comptable',
+      createdAt: format(new Date(da.created_at), 'dd MMMM yyyy', { locale: fr }),
+      createdBy: da.created_by_profile 
+        ? `${da.created_by_profile.first_name || ''} ${da.created_by_profile.last_name || ''}`.trim()
+        : 'N/A',
+      observations: undefined,
+    });
+  };
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-4xl space-y-6">
@@ -274,6 +310,17 @@ export default function ComptabiliteDetail() {
               </p>
             </div>
           </div>
+          
+          {da.status === 'payee' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Exporter PDF
+            </Button>
+          )}
         </div>
 
         {/* Bannière statut final */}
