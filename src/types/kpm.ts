@@ -103,3 +103,77 @@ export const STATUS_LABELS: Record<UserStatus, string> = {
   inactive: 'Inactif',
   suspended: 'Suspendu',
 };
+
+// ==================== MODULE BESOIN ====================
+
+export type BesoinCategory = 'materiel' | 'service' | 'maintenance' | 'urgence' | 'autre';
+export type BesoinUrgency = 'normale' | 'urgente' | 'critique';
+export type BesoinStatus = 'cree' | 'pris_en_charge' | 'accepte' | 'refuse';
+
+export interface Besoin {
+  id: string;
+  department_id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  category: BesoinCategory;
+  urgency: BesoinUrgency;
+  desired_date: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  status: BesoinStatus;
+  rejection_reason: string | null;
+  taken_by: string | null;
+  taken_at: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relations (partial types for joins)
+  department?: { id: string; name: string } | null;
+  user?: { id: string; first_name: string | null; last_name: string | null; email: string } | null;
+  taken_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
+  decided_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const BESOIN_CATEGORY_LABELS: Record<BesoinCategory, string> = {
+  materiel: 'Matériel',
+  service: 'Service',
+  maintenance: 'Maintenance',
+  urgence: 'Urgence',
+  autre: 'Autre',
+};
+
+export const BESOIN_URGENCY_LABELS: Record<BesoinUrgency, string> = {
+  normale: 'Normale',
+  urgente: 'Urgente',
+  critique: 'Critique',
+};
+
+export const BESOIN_STATUS_LABELS: Record<BesoinStatus, string> = {
+  cree: 'Créé',
+  pris_en_charge: 'Pris en charge',
+  accepte: 'Accepté',
+  refuse: 'Refusé',
+};
+
+// Rôles autorisés à créer des besoins
+export const ROLES_CAN_CREATE_BESOIN: AppRole[] = [
+  'admin',
+  'dg',
+  'daf',
+  'responsable_departement',
+  'responsable_logistique',
+  'responsable_achats',
+];

@@ -16,6 +16,11 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminRoles from "./pages/admin/Roles";
 import NotFound from "./pages/NotFound";
 
+// Module Besoins
+import BesoinsList from "./pages/besoins/BesoinsList";
+import BesoinCreate from "./pages/besoins/BesoinCreate";
+import BesoinDetail from "./pages/besoins/BesoinDetail";
+
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -54,6 +59,12 @@ function AppRoutes() {
       <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
       <Route path="/admin/roles" element={<ProtectedRoute><AdminRoles /></ProtectedRoute>} />
       <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+      
+      {/* Module Besoins */}
+      <Route path="/besoins" element={<ProtectedRoute><BesoinsList /></ProtectedRoute>} />
+      <Route path="/besoins/nouveau" element={<ProtectedRoute><BesoinCreate /></ProtectedRoute>} />
+      <Route path="/besoins/:id" element={<ProtectedRoute><BesoinDetail /></ProtectedRoute>} />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
