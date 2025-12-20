@@ -182,7 +182,7 @@ export const ROLES_CAN_CREATE_BESOIN: AppRole[] = [
 
 export type DACategory = 'fournitures' | 'equipement' | 'service' | 'maintenance' | 'informatique' | 'autre';
 export type DAPriority = 'basse' | 'normale' | 'haute' | 'urgente';
-export type DAStatus = 'brouillon' | 'soumise' | 'en_analyse' | 'chiffree' | 'soumise_validation' | 'validee_finance' | 'refusee_finance' | 'en_revision_achats' | 'rejetee';
+export type DAStatus = 'brouillon' | 'soumise' | 'en_analyse' | 'chiffree' | 'soumise_validation' | 'validee_finance' | 'refusee_finance' | 'en_revision_achats' | 'rejetee' | 'payee' | 'rejetee_comptabilite';
 
 export interface DAArticle {
   id: string;
@@ -258,6 +258,16 @@ export interface DemandeAchat {
   revision_requested_by: string | null;
   revision_requested_at: string | null;
   revision_comment: string | null;
+  // Champs Comptabilité
+  comptabilise_by: string | null;
+  comptabilise_at: string | null;
+  syscohada_classe: number | null;
+  syscohada_compte: string | null;
+  syscohada_nature_charge: string | null;
+  syscohada_centre_cout: string | null;
+  mode_paiement: string | null;
+  reference_paiement: string | null;
+  comptabilite_rejection_reason: string | null;
   created_at: string;
   updated_at: string;
   // Relations
@@ -270,6 +280,7 @@ export interface DemandeAchat {
   priced_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
   validated_finance_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
   revision_requested_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
+  comptabilise_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
   articles?: DAArticle[];
 }
 
@@ -299,7 +310,54 @@ export const DA_STATUS_LABELS: Record<DAStatus, string> = {
   refusee_finance: 'Refusée (DAF/DG)',
   en_revision_achats: 'En révision Achats',
   rejetee: 'Rejetée',
+  payee: 'Payée',
+  rejetee_comptabilite: 'Rejetée (Comptabilité)',
 };
+
+// Écriture comptable SYSCOHADA
+export interface EcritureComptable {
+  id: string;
+  da_id: string;
+  reference: string;
+  date_ecriture: string;
+  classe_syscohada: number;
+  compte_comptable: string;
+  nature_charge: string;
+  centre_cout: string | null;
+  libelle: string;
+  debit: number;
+  credit: number;
+  devise: string;
+  mode_paiement: string | null;
+  reference_paiement: string | null;
+  observations: string | null;
+  created_by: string | null;
+  created_at: string;
+  is_validated: boolean;
+  validated_by: string | null;
+  validated_at: string | null;
+}
+
+// Classes SYSCOHADA
+export const SYSCOHADA_CLASSES: Record<number, string> = {
+  1: 'Comptes de ressources durables',
+  2: 'Comptes d\'actif immobilisé',
+  3: 'Comptes de stocks',
+  4: 'Comptes de tiers',
+  5: 'Comptes de trésorerie',
+  6: 'Comptes de charges',
+  7: 'Comptes de produits',
+};
+
+// Modes de paiement
+export const MODES_PAIEMENT = [
+  'Virement bancaire',
+  'Chèque',
+  'Espèces',
+  'Mobile Money',
+  'Traite',
+  'Lettre de crédit',
+];
 
 // ==================== MODULE BON DE LIVRAISON (BL) ====================
 

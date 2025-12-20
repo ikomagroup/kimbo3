@@ -73,6 +73,8 @@ import {
   Ban,
   RotateCcw,
   ShieldCheck,
+  Banknote,
+  BookX,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -87,6 +89,8 @@ const statusColors: Record<DAStatus, string> = {
   refusee_finance: 'bg-destructive text-destructive-foreground',
   en_revision_achats: 'bg-warning text-warning-foreground',
   rejetee: 'bg-destructive/10 text-destructive border-destructive/20',
+  payee: 'bg-success text-success-foreground',
+  rejetee_comptabilite: 'bg-destructive text-destructive-foreground',
 };
 
 const statusIcons: Record<DAStatus, React.ElementType> = {
@@ -99,6 +103,8 @@ const statusIcons: Record<DAStatus, React.ElementType> = {
   refusee_finance: Ban,
   en_revision_achats: RotateCcw,
   rejetee: XCircle,
+  payee: Banknote,
+  rejetee_comptabilite: BookX,
 };
 
 export default function DADetail() {
