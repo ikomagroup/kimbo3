@@ -182,7 +182,7 @@ export const ROLES_CAN_CREATE_BESOIN: AppRole[] = [
 
 export type DACategory = 'fournitures' | 'equipement' | 'service' | 'maintenance' | 'informatique' | 'autre';
 export type DAPriority = 'basse' | 'normale' | 'haute' | 'urgente';
-export type DAStatus = 'brouillon' | 'soumise' | 'rejetee';
+export type DAStatus = 'brouillon' | 'soumise' | 'en_analyse' | 'chiffree' | 'soumise_validation' | 'rejetee';
 
 export interface DAArticle {
   id: string;
@@ -192,6 +192,36 @@ export interface DAArticle {
   unit: string;
   observations: string | null;
   created_at: string;
+  // Prix (optionnel, chargé séparément)
+  prices?: DAArticlePrice[];
+}
+
+export interface DAArticlePrice {
+  id: string;
+  da_article_id: string;
+  fournisseur_id: string;
+  unit_price: number;
+  currency: string;
+  delivery_delay: string | null;
+  conditions: string | null;
+  is_selected: boolean;
+  created_by: string | null;
+  created_at: string;
+  fournisseur?: Fournisseur | null;
+}
+
+export interface Fournisseur {
+  id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DemandeAchat {
@@ -210,6 +240,17 @@ export interface DemandeAchat {
   rejected_by: string | null;
   rejected_at: string | null;
   submitted_at: string | null;
+  // Champs Achats
+  selected_fournisseur_id: string | null;
+  fournisseur_justification: string | null;
+  total_amount: number | null;
+  currency: string | null;
+  analyzed_by: string | null;
+  analyzed_at: string | null;
+  priced_by: string | null;
+  priced_at: string | null;
+  submitted_validation_at: string | null;
+  submitted_validation_by: string | null;
   created_at: string;
   updated_at: string;
   // Relations
@@ -217,6 +258,9 @@ export interface DemandeAchat {
   department?: { id: string; name: string } | null;
   created_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
   rejected_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
+  selected_fournisseur?: Fournisseur | null;
+  analyzed_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
+  priced_by_profile?: { id: string; first_name: string | null; last_name: string | null } | null;
   articles?: DAArticle[];
 }
 
@@ -239,6 +283,9 @@ export const DA_PRIORITY_LABELS: Record<DAPriority, string> = {
 export const DA_STATUS_LABELS: Record<DAStatus, string> = {
   brouillon: 'Brouillon',
   soumise: 'Soumise aux Achats',
+  en_analyse: 'En analyse Achats',
+  chiffree: 'Chiffrée',
+  soumise_validation: 'En attente validation DAF/DG',
   rejetee: 'Rejetée',
 };
 

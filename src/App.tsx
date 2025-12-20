@@ -31,6 +31,9 @@ import BLList from "./pages/bons-livraison/BLList";
 import BLCreate from "./pages/bons-livraison/BLCreate";
 import BLDetail from "./pages/bons-livraison/BLDetail";
 
+// Module Fournisseurs
+import Fournisseurs from "./pages/achats/Fournisseurs";
+
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -84,6 +87,9 @@ function AppRoutes() {
       <Route path="/bons-livraison" element={<ProtectedRoute><BLList /></ProtectedRoute>} />
       <Route path="/bons-livraison/nouveau" element={<ProtectedRoute><BLCreate /></ProtectedRoute>} />
       <Route path="/bons-livraison/:id" element={<ProtectedRoute><BLDetail /></ProtectedRoute>} />
+      
+      {/* Module Fournisseurs */}
+      <Route path="/fournisseurs" element={<ProtectedRoute><Fournisseurs /></ProtectedRoute>} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
