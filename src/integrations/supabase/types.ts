@@ -857,6 +857,9 @@ export type Database = {
         | "en_analyse"
         | "chiffree"
         | "soumise_validation"
+        | "validee_finance"
+        | "refusee_finance"
+        | "en_revision_achats"
       user_status: "active" | "inactive" | "suspended"
     }
     CompositeTypes: {
@@ -1024,6 +1027,9 @@ export const Constants = {
         "en_analyse",
         "chiffree",
         "soumise_validation",
+        "validee_finance",
+        "refusee_finance",
+        "en_revision_achats",
       ],
       user_status: ["active", "inactive", "suspended"],
     },
