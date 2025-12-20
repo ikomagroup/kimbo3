@@ -513,14 +513,14 @@ export default function AdminUsers() {
             <div className="space-y-2">
               <Label htmlFor="department">Département</Label>
               <Select
-                value={editForm.department_id}
-                onValueChange={(value) => setEditForm({ ...editForm, department_id: value })}
+                value={editForm.department_id || "none"}
+                onValueChange={(value) => setEditForm({ ...editForm, department_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un département" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun département</SelectItem>
+                  <SelectItem value="none">Aucun département</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
                       {dept.name}
@@ -636,14 +636,14 @@ export default function AdminUsers() {
             <div className="space-y-2">
               <Label htmlFor="create_department">Département</Label>
               <Select
-                value={createForm.department_id}
-                onValueChange={(value) => setCreateForm({ ...createForm, department_id: value })}
+                value={createForm.department_id || "none"}
+                onValueChange={(value) => setCreateForm({ ...createForm, department_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un département" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun département</SelectItem>
+                  <SelectItem value="none">Aucun département</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
                       {dept.name}
