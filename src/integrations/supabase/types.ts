@@ -53,6 +53,98 @@ export type Database = {
         }
         Relationships: []
       }
+      besoins: {
+        Row: {
+          attachment_name: string | null
+          attachment_url: string | null
+          category: Database["public"]["Enums"]["besoin_category"]
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          department_id: string
+          description: string
+          desired_date: string | null
+          id: string
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["besoin_status"]
+          taken_at: string | null
+          taken_by: string | null
+          title: string
+          updated_at: string
+          urgency: Database["public"]["Enums"]["besoin_urgency"]
+          user_id: string
+        }
+        Insert: {
+          attachment_name?: string | null
+          attachment_url?: string | null
+          category: Database["public"]["Enums"]["besoin_category"]
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          department_id: string
+          description: string
+          desired_date?: string | null
+          id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["besoin_status"]
+          taken_at?: string | null
+          taken_by?: string | null
+          title: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["besoin_urgency"]
+          user_id: string
+        }
+        Update: {
+          attachment_name?: string | null
+          attachment_url?: string | null
+          category?: Database["public"]["Enums"]["besoin_category"]
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          department_id?: string
+          description?: string
+          desired_date?: string | null
+          id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["besoin_status"]
+          taken_at?: string | null
+          taken_by?: string | null
+          title?: string
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["besoin_urgency"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "besoins_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "besoins_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "besoins_taken_by_fkey"
+            columns: ["taken_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "besoins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           created_at: string
@@ -79,6 +171,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permissions: {
         Row: {
@@ -236,6 +369,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_create_besoin: { Args: { _user_id: string }; Returns: boolean }
+      create_notification: {
+        Args: {
+          _link?: string
+          _message: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
       get_user_department: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -245,6 +389,8 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_dg: { Args: { _user_id: string }; Returns: boolean }
+      is_logistics: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
@@ -259,6 +405,14 @@ export type Database = {
         | "responsable_departement"
         | "employe"
         | "lecture_seule"
+      besoin_category:
+        | "materiel"
+        | "service"
+        | "maintenance"
+        | "urgence"
+        | "autre"
+      besoin_status: "cree" | "pris_en_charge" | "accepte" | "refuse"
+      besoin_urgency: "normale" | "urgente" | "critique"
       user_status: "active" | "inactive" | "suspended"
     }
     CompositeTypes: {
@@ -400,6 +554,15 @@ export const Constants = {
         "employe",
         "lecture_seule",
       ],
+      besoin_category: [
+        "materiel",
+        "service",
+        "maintenance",
+        "urgence",
+        "autre",
+      ],
+      besoin_status: ["cree", "pris_en_charge", "accepte", "refuse"],
+      besoin_urgency: ["normale", "urgente", "critique"],
       user_status: ["active", "inactive", "suspended"],
     },
   },
