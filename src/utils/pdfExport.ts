@@ -14,18 +14,24 @@ interface CompanyInfo {
   name: string;
   slogan: string;
   address: string;
-  phone: string;
+  addressLine2: string;
+  phone1: string;
+  phone2: string;
   email: string;
   website: string;
+  logoUrl: string;
 }
 
 const COMPANY_INFO: CompanyInfo = {
-  name: 'KIMBO',
+  name: 'KIMBO AFRICA',
   slogan: 'Procurement Management System',
-  address: 'Douala, Cameroun',
-  phone: '+237 XXX XXX XXX',
-  email: 'contact@kimbo.cm',
-  website: 'www.kimbo.cm',
+  address: 'Abidjan, Cocody Angré,',
+  addressLine2: 'Les oscars Cité les papayers',
+  phone1: '+225 27 22 55 79 65',
+  phone2: '+225 07 09 30 30 48',
+  email: 'infos@kimboafricasa.com',
+  website: 'www.kimboafricasa.com',
+  logoUrl: '/logo-kimbo.png',
 };
 
 // Colors based on the design system
@@ -112,7 +118,8 @@ const addProfessionalHeader = (
   // Contact info under logo
   doc.setFontSize(7);
   doc.setTextColor(...COLORS.muted);
-  doc.text(`${COMPANY_INFO.address} | ${COMPANY_INFO.phone} | ${COMPANY_INFO.email}`, 14, 38);
+  doc.text(`${COMPANY_INFO.address} ${COMPANY_INFO.addressLine2}`, 14, 36);
+  doc.text(`${COMPANY_INFO.phone1} | ${COMPANY_INFO.phone2} | ${COMPANY_INFO.email}`, 14, 41);
   
   // Document type box (right side)
   const boxWidth = 70;
@@ -365,8 +372,8 @@ const addProfessionalFooter = (doc: jsPDF, documentType: string) => {
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.muted);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${COMPANY_INFO.name} - ${COMPANY_INFO.slogan}`, 14, pageHeight - 18);
-    doc.text(`${COMPANY_INFO.address} | ${COMPANY_INFO.email} | ${COMPANY_INFO.website}`, 14, pageHeight - 13);
+    doc.text(`${COMPANY_INFO.name} - ${COMPANY_INFO.address} ${COMPANY_INFO.addressLine2}`, 14, pageHeight - 18);
+    doc.text(`${COMPANY_INFO.phone1} | ${COMPANY_INFO.phone2} | ${COMPANY_INFO.email} | ${COMPANY_INFO.website}`, 14, pageHeight - 13);
     
     // Document type and page
     doc.setTextColor(...COLORS.secondary);

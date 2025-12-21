@@ -139,13 +139,24 @@ export function NotificationBell() {
     }
   };
 
+  // Marquer toutes comme lues quand le popover est ouvert
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && unreadCount > 0) {
+      // Marquer toutes les notifications comme lues après un court délai
+      setTimeout(() => {
+        markAllAsRead();
+      }, 1500);
+    }
+  };
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs font-medium text-destructive-foreground">
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs font-medium text-destructive-foreground animate-pulse">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
