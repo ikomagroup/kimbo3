@@ -745,8 +745,76 @@ export default function AdminUsers() {
               {isDeleting ? 'Suppression...' : 'Supprimer'}
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
+      </AlertDialogContent>
       </AlertDialog>
+
+      {/* Admin Action Modal (Email/Password) */}
+      <Dialog open={showAdminActionModal} onOpenChange={(open) => !open && closeAdminActionModal()}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="font-serif">
+              {adminActionType === 'email' ? 'Modifier l\'email' : 'Réinitialiser le mot de passe'}
+            </DialogTitle>
+            <DialogDescription>
+              {adminActionType === 'email' 
+                ? `Modifier l'adresse email de ${adminActionUser?.first_name} ${adminActionUser?.last_name}.`
+                : `Définir un nouveau mot de passe pour ${adminActionUser?.first_name} ${adminActionUser?.last_name}.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {adminActionType === 'email' ? (
+              <div className="space-y-2">
+                <Label htmlFor="new_email">Nouvel email</Label>
+                <Input
+                  id="new_email"
+                  type="email"
+                  placeholder="nouveau@email.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="new_password">Nouveau mot de passe (min. 6 caractères)</Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="admin_reason">Motif de l'action (obligatoire)</Label>
+              <Input
+                id="admin_reason"
+                placeholder="Ex: Demande de l'utilisateur, correction d'erreur..."
+                value={adminActionReason}
+                onChange={(e) => setAdminActionReason(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Cette action sera journalisée avec le motif indiqué.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeAdminActionModal} disabled={isAdminActing}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleAdminAction} 
+              disabled={isAdminActing || !adminActionReason.trim() || (adminActionType === 'email' ? !newEmail : !newPassword || newPassword.length < 6)}
+            >
+              {isAdminActing ? 'En cours...' : (adminActionType === 'email' ? 'Modifier l\'email' : 'Réinitialiser')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
