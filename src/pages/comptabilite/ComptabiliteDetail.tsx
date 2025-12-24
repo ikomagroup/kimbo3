@@ -62,6 +62,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { exportEcritureToPDF } from '@/utils/pdfExport';
 import { DATimeline } from '@/components/ui/DATimeline';
+import { CompteComptableAutocomplete } from '@/components/ui/CompteComptableAutocomplete';
 
 export default function ComptabiliteDetail() {
   const { id } = useParams<{ id: string }>();
@@ -440,11 +441,17 @@ export default function ComptabiliteDetail() {
 
                 <div className="space-y-2">
                   <Label>Compte comptable *</Label>
-                  <Input
-                    placeholder="Ex: 6011, 6221..."
+                  <CompteComptableAutocomplete
                     value={syscohadaForm.compte}
-                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, compte: e.target.value })}
-                    maxLength={20}
+                    onChange={(code, compte) => {
+                      setSyscohadaForm({ 
+                        ...syscohadaForm, 
+                        compte: code,
+                        classe: compte ? compte.classe.toString() : syscohadaForm.classe,
+                        nature_charge: compte ? compte.libelle : syscohadaForm.nature_charge,
+                      });
+                    }}
+                    placeholder="Rechercher un compte..."
                   />
                 </div>
 
