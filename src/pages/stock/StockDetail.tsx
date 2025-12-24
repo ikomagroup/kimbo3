@@ -56,6 +56,7 @@ import {
   RefreshCw,
   MapPin,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -141,6 +142,7 @@ export default function StockDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [showAdjustDialog, setShowAdjustDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [customUnit, setCustomUnit] = useState(false);
 
   // Adjustment form
@@ -388,6 +390,37 @@ export default function StockDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!article) return;
+    
+    setIsSaving(true);
+    try {
+      // Delete associated stock movements first
+      const { error: movementsError } = await supabase
+        .from('stock_movements')
+        .delete()
+        .eq('article_stock_id', article.id);
+      
+      if (movementsError) throw movementsError;
+
+      // Delete the article
+      const { error } = await supabase
+        .from('articles_stock')
+        .delete()
+        .eq('id', article.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Article supprimé', description: 'L\'article a été retiré du stock.' });
+      navigate('/stock');
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -438,6 +471,14 @@ export default function StockDetail() {
               <Button size="sm" onClick={() => setShowAdjustDialog(true)}>
                 <ArrowUpDown className="mr-2 h-4 w-4" />
                 Ajuster
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer
               </Button>
             </div>
           )}
@@ -868,6 +909,38 @@ export default function StockDetail() {
               disabled={isSaving || !editForm.designation.trim() || !editForm.unit.trim()}
             >
               {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Supprimer l'article</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cet article du stock ? Cette action est irréversible et supprimera également tout l'historique des mouvements associés.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+              <p className="font-medium text-foreground">{article?.designation}</p>
+              <p className="text-sm text-muted-foreground">
+                Quantité actuelle : {article?.quantity_available} {article?.unit}
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete} 
+              disabled={isSaving}
+            >
+              {isSaving ? 'Suppression...' : 'Confirmer la suppression'}
             </Button>
           </DialogFooter>
         </DialogContent>
