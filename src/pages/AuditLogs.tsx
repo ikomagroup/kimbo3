@@ -98,18 +98,34 @@ export default function AuditLogs() {
 
       if (logsError) throw logsError;
 
-      // Fetch profiles for user_ids
-      const userIds = [...new Set((logsData || []).filter(l => l.user_id).map(l => l.user_id))];
+      // Fetch profiles for user_ids using the security definer function
+      const userIds = [...new Set((logsData || []).filter(l => l.user_id).map(l => l.user_id))] as string[];
       let profilesMap: Record<string, { first_name: string | null; last_name: string | null; email: string }> = {};
 
       if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, email')
-          .in('id', userIds);
+        // Use get_public_profiles which has SECURITY DEFINER to bypass RLS
+        const { data: profilesData, error: profilesError } = await supabase
+          .rpc('get_public_profiles', { _user_ids: userIds });
 
-        if (profilesData) {
-          profilesMap = Object.fromEntries(profilesData.map(p => [p.id, p]));
+        if (!profilesError && profilesData) {
+          // Also fetch emails from profiles table for current user (will get own profile at least)
+          const { data: emailsData } = await supabase
+            .from('profiles')
+            .select('id, email')
+            .in('id', userIds);
+          
+          const emailsMap: Record<string, string> = {};
+          if (emailsData) {
+            emailsData.forEach(p => { emailsMap[p.id] = p.email; });
+          }
+
+          profilesData.forEach((p: { id: string; first_name: string | null; last_name: string | null }) => {
+            profilesMap[p.id] = {
+              first_name: p.first_name,
+              last_name: p.last_name,
+              email: emailsMap[p.id] || '',
+            };
+          });
         }
       }
 
