@@ -7,17 +7,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Besoin, LOGISTICS_ROLES } from '@/types/kpm';
-import { ArrowLeft, Plus, Trash2, Info, AlertTriangle, Package } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Package, Link as LinkIcon, Unlink } from 'lucide-react';
 import { AccessDenied } from '@/components/ui/AccessDenied';
+import { StockArticleSelector } from '@/components/bons-livraison/StockArticleSelector';
 
 interface ArticleForm {
   designation: string;
   quantity: string;
   unit: string;
   observations: string;
+  article_stock_id?: string | null;
+  stock_available?: number;
 }
 
 export default function BLCreate() {
@@ -56,7 +60,6 @@ export default function BLCreate() {
 
   const fetchBesoinWithLignes = async () => {
     try {
-      // Fetch besoin
       const { data, error } = await supabase
         .from('besoins')
         .select(`
@@ -73,7 +76,6 @@ export default function BLCreate() {
         return;
       }
 
-      // Fetch lignes du besoin
       const { data: lignesData } = await supabase
         .from('besoin_lignes')
         .select('*')
@@ -82,7 +84,6 @@ export default function BLCreate() {
 
       setBesoin(data as Besoin);
 
-      // Pre-fill delivery location from besoin if available
       if (data.lieu_livraison) {
         setForm((prev) => ({
           ...prev,
@@ -90,19 +91,19 @@ export default function BLCreate() {
         }));
       }
 
-      // Auto-populate articles from besoin lignes
       if (lignesData && lignesData.length > 0 && !lignesLoaded) {
         const articlesFromLignes: ArticleForm[] = lignesData.map((ligne) => ({
           designation: ligne.designation,
           quantity: String(ligne.quantity),
           unit: ligne.unit,
           observations: ligne.justification || '',
+          article_stock_id: null,
+          stock_available: undefined,
         }));
         setArticles(articlesFromLignes);
         setLignesLoaded(true);
       } else if (!lignesLoaded) {
-        // Fallback: create one empty article if no lignes
-        setArticles([{ designation: '', quantity: '1', unit: 'unité', observations: '' }]);
+        setArticles([{ designation: '', quantity: '1', unit: 'unité', observations: '', article_stock_id: null }]);
         setLignesLoaded(true);
       }
     } catch (error: any) {
@@ -118,7 +119,64 @@ export default function BLCreate() {
   };
 
   const addArticle = () => {
-    setArticles((prev) => [...prev, { designation: '', quantity: '1', unit: 'unité', observations: '' }]);
+    setArticles((prev) => [...prev, { designation: '', quantity: '1', unit: 'unité', observations: '', article_stock_id: null }]);
+  };
+
+  const addArticleFromStock = (stockArticle: {
+    id: string;
+    designation: string;
+    unit: string;
+    quantity_available: number;
+    quantity_reserved: number;
+  }) => {
+    const available = Math.max(0, stockArticle.quantity_available - stockArticle.quantity_reserved);
+    setArticles((prev) => [
+      ...prev,
+      {
+        designation: stockArticle.designation,
+        quantity: '1',
+        unit: stockArticle.unit,
+        observations: '',
+        article_stock_id: stockArticle.id,
+        stock_available: available,
+      },
+    ]);
+    toast({
+      title: 'Article ajouté',
+      description: `${stockArticle.designation} (${available} ${stockArticle.unit} disponibles)`,
+    });
+  };
+
+  const linkToStock = (index: number, stockArticle: {
+    id: string;
+    designation: string;
+    unit: string;
+    quantity_available: number;
+    quantity_reserved: number;
+  }) => {
+    const available = Math.max(0, stockArticle.quantity_available - stockArticle.quantity_reserved);
+    const updated = [...articles];
+    updated[index] = {
+      ...updated[index],
+      article_stock_id: stockArticle.id,
+      stock_available: available,
+      unit: stockArticle.unit,
+    };
+    setArticles(updated);
+    toast({
+      title: 'Article lié au stock',
+      description: `${available} ${stockArticle.unit} disponibles`,
+    });
+  };
+
+  const unlinkFromStock = (index: number) => {
+    const updated = [...articles];
+    updated[index] = {
+      ...updated[index],
+      article_stock_id: null,
+      stock_available: undefined,
+    };
+    setArticles(updated);
   };
 
   const removeArticle = (index: number) => {
@@ -129,8 +187,23 @@ export default function BLCreate() {
 
   const updateArticle = (index: number, field: keyof ArticleForm, value: string) => {
     const updated = [...articles];
-    updated[index][field] = value;
+    updated[index] = { ...updated[index], [field]: value };
     setArticles(updated);
+  };
+
+  const validateStock = (): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    articles.forEach((article, index) => {
+      if (article.article_stock_id && article.stock_available !== undefined) {
+        const qty = parseFloat(article.quantity);
+        if (qty > article.stock_available) {
+          errors.push(
+            `Article ${index + 1} (${article.designation}): quantité demandée (${qty}) > disponible (${article.stock_available})`
+          );
+        }
+      }
+    });
+    return { valid: errors.length === 0, errors };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,14 +216,23 @@ export default function BLCreate() {
       return;
     }
 
+    // Validate stock quantities
+    const stockValidation = validateStock();
+    if (!stockValidation.valid) {
+      toast({
+        title: 'Stock insuffisant',
+        description: stockValidation.errors.join('\n'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
 
     try {
-      // Generate reference
       const { data: refData, error: refError } = await supabase.rpc('generate_bl_reference');
       if (refError) throw refError;
 
-      // Create BL
       const { data: bl, error: blError } = await supabase
         .from('bons_livraison')
         .insert({
@@ -161,19 +243,21 @@ export default function BLCreate() {
           delivery_date: form.delivery_date || null,
           warehouse: form.warehouse.trim() || null,
           observations: form.observations.trim() || null,
+          bl_type: 'stock',
         })
         .select()
         .single();
 
       if (blError) throw blError;
 
-      // Create articles
       const articlesToInsert = validArticles.map((a) => ({
         bl_id: bl.id,
         designation: a.designation.trim(),
         quantity: parseFloat(a.quantity),
         unit: a.unit,
         observations: a.observations.trim() || null,
+        article_stock_id: a.article_stock_id || null,
+        quantity_ordered: parseFloat(a.quantity),
       }));
 
       const { error: artError } = await supabase.from('bl_articles').insert(articlesToInsert);
@@ -188,6 +272,10 @@ export default function BLCreate() {
       setIsSaving(false);
     }
   };
+
+  const linkedStockIds = articles
+    .filter((a) => a.article_stock_id)
+    .map((a) => a.article_stock_id as string);
 
   if (!hasAccess) {
     return (
@@ -270,10 +358,9 @@ export default function BLCreate() {
           <CardContent className="flex items-start gap-3 py-4">
             <Package className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div>
-              <p className="font-medium text-foreground">Conversion automatique des lignes</p>
+              <p className="font-medium text-foreground">Livraison depuis le stock</p>
               <p className="text-sm text-muted-foreground">
-                Les lignes du besoin ont été automatiquement reprises. Ce BL permet de satisfaire le besoin 
-                depuis le stock existant. Le stock sera décrémenté à la livraison effective.
+                Liez chaque article au stock pour vérifier la disponibilité. Le stock sera décrémenté à la livraison.
               </p>
             </div>
           </CardContent>
@@ -346,64 +433,136 @@ export default function BLCreate() {
               <div>
                 <CardTitle className="text-lg">Articles à livrer</CardTitle>
                 <CardDescription>
-                  Listez les articles disponibles en stock
+                  Liez les articles au stock pour vérifier les quantités disponibles
                 </CardDescription>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={addArticle}>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter
-              </Button>
+              <div className="flex gap-2">
+                <StockArticleSelector
+                  onSelect={addArticleFromStock}
+                  excludeIds={linkedStockIds}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={addArticle}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Manuel
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {articles.map((article, index) => (
-              <div key={index} className="rounded-lg border bg-muted/30 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Article {index + 1}
-                  </span>
-                  {articles.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                      onClick={() => removeArticle(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <div className="sm:col-span-2">
-                    <Label>Désignation *</Label>
-                    <Input
-                      placeholder="Nom de l'article"
-                      value={article.designation}
-                      onChange={(e) => updateArticle(index, 'designation', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Quantité *</Label>
-                    <Input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={article.quantity}
-                      onChange={(e) => updateArticle(index, 'quantity', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Unité</Label>
-                    <Input
-                      placeholder="unité"
-                      value={article.unit}
-                      onChange={(e) => updateArticle(index, 'unit', e.target.value)}
-                    />
-                  </div>
-                </div>
+            {articles.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <Package className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+                <p className="text-muted-foreground">Ajoutez des articles depuis le stock ou manuellement</p>
               </div>
-            ))}
+            ) : (
+              articles.map((article, index) => {
+                const qty = parseFloat(article.quantity) || 0;
+                const isOverStock = article.stock_available !== undefined && qty > article.stock_available;
+                const isLinked = !!article.article_stock_id;
+
+                return (
+                  <div
+                    key={index}
+                    className={`rounded-lg border p-4 ${
+                      isOverStock ? 'border-destructive/50 bg-destructive/5' : 'bg-muted/30'
+                    }`}
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Article {index + 1}
+                        </span>
+                        {isLinked ? (
+                          <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                            <LinkIcon className="mr-1 h-3 w-3" />
+                            Lié au stock
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Manuel
+                          </Badge>
+                        )}
+                        {article.stock_available !== undefined && (
+                          <span className="text-xs text-muted-foreground">
+                            ({article.stock_available} {article.unit} disponibles)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {isLinked ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => unlinkFromStock(index)}
+                            title="Délier du stock"
+                          >
+                            <Unlink className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <StockArticleSelector
+                            onSelect={(stockArticle) => linkToStock(index, stockArticle)}
+                            excludeIds={linkedStockIds}
+                          />
+                        )}
+                        {articles.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            onClick={() => removeArticle(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {isOverStock && (
+                      <div className="mb-3 flex items-center gap-2 text-sm text-destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        Stock insuffisant: {article.stock_available} {article.unit} disponibles
+                      </div>
+                    )}
+
+                    <div className="grid gap-3 sm:grid-cols-4">
+                      <div className="sm:col-span-2">
+                        <Label>Désignation *</Label>
+                        <Input
+                          placeholder="Nom de l'article"
+                          value={article.designation}
+                          onChange={(e) => updateArticle(index, 'designation', e.target.value)}
+                          disabled={isLinked}
+                        />
+                      </div>
+                      <div>
+                        <Label>Quantité *</Label>
+                        <Input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          max={article.stock_available}
+                          value={article.quantity}
+                          onChange={(e) => updateArticle(index, 'quantity', e.target.value)}
+                          className={isOverStock ? 'border-destructive' : ''}
+                        />
+                      </div>
+                      <div>
+                        <Label>Unité</Label>
+                        <Input
+                          placeholder="unité"
+                          value={article.unit}
+                          onChange={(e) => updateArticle(index, 'unit', e.target.value)}
+                          disabled={isLinked}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </CardContent>
         </Card>
 
