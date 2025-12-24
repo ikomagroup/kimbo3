@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,13 +70,13 @@ interface MonthlyTrend {
 }
 
 const CHART_COLORS = {
-  primary: 'hsl(32, 93%, 54%)',      // Orange KIMBO
-  secondary: 'hsl(24, 58%, 27%)',     // Marron profond
-  success: 'hsl(142, 71%, 35%)',      // Vert
-  warning: 'hsl(32, 93%, 45%)',       // Orange foncé
-  danger: 'hsl(0, 65%, 51%)',         // Rouge
-  muted: 'hsl(40, 24%, 70%)',         // Gris sable
-  accent: 'hsl(32, 93%, 70%)',        // Orange clair
+  primary: 'hsl(32, 93%, 54%)',
+  secondary: 'hsl(24, 58%, 27%)',
+  success: 'hsl(142, 71%, 35%)',
+  warning: 'hsl(32, 93%, 45%)',
+  danger: 'hsl(0, 65%, 51%)',
+  muted: 'hsl(40, 24%, 70%)',
+  accent: 'hsl(32, 93%, 70%)',
 };
 
 const BESOIN_STATUS_COLORS = [
@@ -97,8 +97,12 @@ const DA_STATUS_COLORS = [
   CHART_COLORS.danger,
 ];
 
+// Cache for dashboard data (5 minutes TTL)
+const CACHE_TTL = 5 * 60 * 1000;
+let dashboardCache: { data: any; timestamp: number } | null = null;
+
 export default function Dashboard() {
-  const { profile, roles, isAdmin, hasAnyRole } = useAuth();
+  const { user, profile, roles, isAdmin, hasAnyRole } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     totalDepartments: 0,
@@ -114,161 +118,158 @@ export default function Dashboard() {
 
   const canViewFullDashboard = hasAnyRole(['admin', 'dg', 'daf', 'responsable_logistique', 'responsable_achats', 'comptable']);
 
+  const fetchStats = useCallback(async () => {
+    if (!user?.id) return;
+    
+    // Check cache first
+    if (dashboardCache && Date.now() - dashboardCache.timestamp < CACHE_TTL) {
+      const cached = dashboardCache.data;
+      setStats(cached.stats);
+      setMonthlyTrends(cached.trends);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Use optimized RPC function + parallel queries
+      const [
+        summaryResult,
+        deptResult,
+        activeDeptResult,
+        userResult,
+        daAmountsResult,
+      ] = await Promise.all([
+        // Main dashboard summary from optimized RPC
+        supabase.rpc('dashboard_summary_by_role', { _user_id: user.id }),
+        // Department counts
+        supabase.from('departments').select('*', { count: 'exact', head: true }),
+        supabase.from('departments').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        // User count (admin only)
+        isAdmin 
+          ? supabase.from('profiles').select('*', { count: 'exact', head: true })
+          : Promise.resolve({ count: 0 }),
+        // DA amounts for financial KPIs
+        supabase.from('demandes_achat').select('status, total_amount'),
+      ]);
+
+      const summary = summaryResult.data as any || {};
+      
+      // Extract stats from RPC response
+      const besoinsStats = summary.besoins || {};
+      const daStats = summary.demandes_achat || {};
+      const blStats = summary.bons_livraison || {};
+      const stockStats = summary.stock || {};
+
+      // Calculate amounts from DA data
+      const daData = daAmountsResult.data || [];
+      const engage = daData
+        .filter((d: any) => ['soumise_validation', 'validee_finance', 'payee'].includes(d.status))
+        .reduce((sum: number, d: any) => sum + (d.total_amount || 0), 0);
+      const paye = daData
+        .filter((d: any) => d.status === 'payee')
+        .reduce((sum: number, d: any) => sum + (d.total_amount || 0), 0);
+      const enAttente = daData
+        .filter((d: any) => d.status === 'validee_finance')
+        .reduce((sum: number, d: any) => sum + (d.total_amount || 0), 0);
+
+      const newStats: DashboardStats = {
+        totalUsers: (userResult as any).count || 0,
+        totalDepartments: deptResult.count || 0,
+        activeDepartments: activeDeptResult.count || 0,
+        besoins: {
+          total: besoinsStats.total || 0,
+          cree: besoinsStats.cree || 0,
+          pris_en_charge: besoinsStats.pris_en_charge || 0,
+          accepte: besoinsStats.accepte || 0,
+          refuse: besoinsStats.refuse || 0,
+        },
+        da: {
+          total: daStats.total || 0,
+          brouillon: daStats.brouillon || 0,
+          soumise: daStats.soumise || 0,
+          en_analyse: daStats.en_analyse || 0,
+          chiffree: daStats.chiffree || 0,
+          soumise_validation: daStats.soumise_validation || 0,
+          validee_finance: daStats.validee_finance || 0,
+          payee: daStats.payee || 0,
+          rejetee: 0,
+        },
+        bl: {
+          total: blStats.total || 0,
+          prepare: blStats.prepare || 0,
+          valide: blStats.valide || blStats.en_attente_validation || 0,
+          livre: blStats.livre || 0,
+          livree_partiellement: 0,
+        },
+        montants: { engage, paye, en_attente: enAttente },
+        stock: {
+          total: stockStats.total_articles || 0,
+          critique: stockStats.low_stock || 0,
+          epuise: stockStats.epuise || 0,
+        },
+      };
+
+      setStats(newStats);
+
+      // Fetch monthly trends in parallel (optimized batch)
+      const now = new Date();
+      const monthPromises = Array.from({ length: 6 }, (_, i) => {
+        const monthDate = subMonths(now, 5 - i);
+        const monthStart = startOfMonth(monthDate).toISOString();
+        const monthEnd = endOfMonth(monthDate).toISOString();
+        const monthLabel = format(monthDate, 'MMM', { locale: fr });
+        
+        return Promise.all([
+          supabase.from('besoins').select('*', { count: 'exact', head: true })
+            .gte('created_at', monthStart).lte('created_at', monthEnd),
+          supabase.from('demandes_achat').select('*', { count: 'exact', head: true })
+            .gte('created_at', monthStart).lte('created_at', monthEnd),
+          supabase.from('bons_livraison').select('*', { count: 'exact', head: true })
+            .gte('created_at', monthStart).lte('created_at', monthEnd),
+        ]).then(([b, d, bl]) => ({
+          month: monthLabel,
+          besoins: b.count || 0,
+          da: d.count || 0,
+          bl: bl.count || 0,
+        }));
+      });
+
+      const trends = await Promise.all(monthPromises);
+      setMonthlyTrends(trends);
+
+      // Update cache
+      dashboardCache = {
+        data: { stats: newStats, trends },
+        timestamp: Date.now(),
+      };
+
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, isAdmin]);
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Fetch departments count
-        const { count: deptCount } = await supabase
-          .from('departments')
-          .select('*', { count: 'exact', head: true });
-
-        const { count: activeDeptCount } = await supabase
-          .from('departments')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_active', true);
-
-        // Fetch users count (only for admin)
-        let userCount = 0;
-        if (isAdmin) {
-          const { count } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true });
-          userCount = count || 0;
-        }
-
-        // Fetch besoins stats
-        const { data: besoinsData } = await supabase
-          .from('besoins')
-          .select('status');
-
-        const besoinsStats = {
-          total: besoinsData?.length || 0,
-          cree: besoinsData?.filter(b => b.status === 'cree').length || 0,
-          pris_en_charge: besoinsData?.filter(b => b.status === 'pris_en_charge').length || 0,
-          accepte: besoinsData?.filter(b => b.status === 'accepte').length || 0,
-          refuse: besoinsData?.filter(b => b.status === 'refuse').length || 0,
-        };
-
-        // Fetch DA stats
-        const { data: daData } = await supabase
-          .from('demandes_achat')
-          .select('status, total_amount, currency');
-
-        const daStats = {
-          total: daData?.length || 0,
-          brouillon: daData?.filter(d => d.status === 'brouillon').length || 0,
-          soumise: daData?.filter(d => d.status === 'soumise').length || 0,
-          en_analyse: daData?.filter(d => d.status === 'en_analyse').length || 0,
-          chiffree: daData?.filter(d => d.status === 'chiffree').length || 0,
-          soumise_validation: daData?.filter(d => d.status === 'soumise_validation').length || 0,
-          validee_finance: daData?.filter(d => d.status === 'validee_finance').length || 0,
-          payee: daData?.filter(d => d.status === 'payee').length || 0,
-          rejetee: daData?.filter(d => ['rejetee', 'refusee_finance', 'rejetee_comptabilite'].includes(d.status)).length || 0,
-        };
-
-        // Calculate amounts
-        const engage = daData?.filter(d => ['soumise_validation', 'validee_finance', 'payee'].includes(d.status))
-          .reduce((sum, d) => sum + (d.total_amount || 0), 0) || 0;
-        const paye = daData?.filter(d => d.status === 'payee')
-          .reduce((sum, d) => sum + (d.total_amount || 0), 0) || 0;
-        const enAttente = daData?.filter(d => d.status === 'validee_finance')
-          .reduce((sum, d) => sum + (d.total_amount || 0), 0) || 0;
-
-        // Fetch BL stats
-        const { data: blData } = await supabase
-          .from('bons_livraison')
-          .select('status');
-
-        const blStats = {
-          total: blData?.length || 0,
-          prepare: blData?.filter(b => b.status === 'prepare').length || 0,
-          valide: blData?.filter(b => ['valide', 'en_attente_validation'].includes(b.status)).length || 0,
-          livre: blData?.filter(b => b.status === 'livre').length || 0,
-          livree_partiellement: blData?.filter(b => b.status === 'livree_partiellement').length || 0,
-        };
-
-        // Fetch stock stats
-        const { data: stockData } = await supabase
-          .from('articles_stock')
-          .select('quantity_available, quantity_min, status');
-
-        const stockStats = {
-          total: stockData?.length || 0,
-          critique: stockData?.filter(s => s.quantity_available <= (s.quantity_min || 0) && s.quantity_available > 0).length || 0,
-          epuise: stockData?.filter(s => s.status === 'epuise' || s.quantity_available <= 0).length || 0,
-        };
-
-        // Fetch monthly trends (last 6 months)
-        const trends: MonthlyTrend[] = [];
-        for (let i = 5; i >= 0; i--) {
-          const monthDate = subMonths(new Date(), i);
-          const monthStart = startOfMonth(monthDate);
-          const monthEnd = endOfMonth(monthDate);
-          const monthLabel = format(monthDate, 'MMM', { locale: fr });
-
-          const { count: besoinsCount } = await supabase
-            .from('besoins')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', monthStart.toISOString())
-            .lte('created_at', monthEnd.toISOString());
-
-          const { count: daCount } = await supabase
-            .from('demandes_achat')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', monthStart.toISOString())
-            .lte('created_at', monthEnd.toISOString());
-
-          const { count: blCount } = await supabase
-            .from('bons_livraison')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', monthStart.toISOString())
-            .lte('created_at', monthEnd.toISOString());
-
-          trends.push({
-            month: monthLabel,
-            besoins: besoinsCount || 0,
-            da: daCount || 0,
-            bl: blCount || 0,
-          });
-        }
-        setMonthlyTrends(trends);
-
-        setStats({
-          totalUsers: userCount,
-          totalDepartments: deptCount || 0,
-          activeDepartments: activeDeptCount || 0,
-          besoins: besoinsStats,
-          da: daStats,
-          bl: blStats,
-          montants: { engage, paye, en_attente: enAttente },
-          stock: stockStats,
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchStats();
-  }, [isAdmin]);
+  }, [fetchStats]);
 
-  const formatMontant = (value: number) => {
+  const formatMontant = useCallback((value: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'decimal',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value) + ' XOF';
-  };
+  }, []);
 
-  const besoinsChartData = [
+  const besoinsChartData = useMemo(() => [
     { name: 'Créés', value: stats.besoins.cree, color: CHART_COLORS.primary },
     { name: 'Pris en charge', value: stats.besoins.pris_en_charge, color: CHART_COLORS.warning },
     { name: 'Acceptés', value: stats.besoins.accepte, color: CHART_COLORS.success },
     { name: 'Refusés', value: stats.besoins.refuse, color: CHART_COLORS.danger },
-  ].filter(d => d.value > 0);
+  ].filter(d => d.value > 0), [stats.besoins]);
 
-  const daChartData = [
+  const daChartData = useMemo(() => [
     { name: 'Brouillon', value: stats.da.brouillon },
     { name: 'Soumises', value: stats.da.soumise },
     { name: 'En analyse', value: stats.da.en_analyse },
@@ -277,7 +278,7 @@ export default function Dashboard() {
     { name: 'Validées', value: stats.da.validee_finance },
     { name: 'Payées', value: stats.da.payee },
     { name: 'Rejetées', value: stats.da.rejetee },
-  ];
+  ], [stats.da]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
