@@ -81,49 +81,65 @@ export function SyscohadaFormDynamic({ value, onChange, disabled = false }: Sysc
     return comptes.filter(c => c.classe === classe).length;
   };
 
-  // Handle classe change - filter comptes, auto-select if only one
-  const handleClasseChange = useCallback((newClasse: string) => {
-    const classeInt = parseInt(newClasse);
-    const comptesForClasse = comptes.filter(c => c.classe === classeInt);
-    
-    // If current compte doesn't match new classe, clear it
-    const currentCompte = comptes.find(c => c.code === value.compte);
-    if (currentCompte && currentCompte.classe !== classeInt) {
-      // Auto-select first compte if only one available
-      if (comptesForClasse.length === 1) {
-        onChange({
-          classe: newClasse,
-          compte: comptesForClasse[0].code,
-          nature_charge: comptesForClasse[0].libelle,
-          centre_cout: value.centre_cout,
-        });
-      } else {
-        onChange({
-          classe: newClasse,
-          compte: '',
-          nature_charge: '',
-          centre_cout: value.centre_cout,
-        });
-      }
-    } else {
-      onChange({ ...value, classe: newClasse });
-    }
-  }, [comptes, value, onChange]);
+  // Synchronisation classe -> compte (et libellé)
+  const handleClasseChange = useCallback(
+    (newClasse: string) => {
+      const classeInt = Number(newClasse);
+      const comptesForClasse = comptes.filter((c) => c.classe === classeInt);
 
-  // Handle compte change - auto-update classe and nature_charge
-  const handleCompteChange = useCallback((compteCode: string) => {
-    const compte = comptes.find(c => c.code === compteCode);
-    if (compte) {
+      const currentCompte = value.compte ? comptes.find((c) => c.code === value.compte) : undefined;
+
+      // Si le compte actuel appartient déjà à la classe, on ne change pas le compte
+      if (currentCompte && currentCompte.classe === classeInt) {
+        onChange({
+          ...value,
+          classe: newClasse,
+          nature_charge: currentCompte.libelle,
+        });
+        return;
+      }
+
+      // Sinon, on sélectionne automatiquement le premier compte de la classe (si disponible)
+      if (comptesForClasse.length > 0) {
+        const first = comptesForClasse[0];
+        onChange({
+          ...value,
+          classe: newClasse,
+          compte: first.code,
+          nature_charge: first.libelle,
+        });
+        return;
+      }
+
+      // Aucune compte pour cette classe
       onChange({
+        ...value,
+        classe: newClasse,
+        compte: '',
+        nature_charge: '',
+      });
+    },
+    [comptes, value, onChange]
+  );
+
+  // Synchronisation compte -> classe (et libellé)
+  const handleCompteChange = useCallback(
+    (compteCode: string) => {
+      const compte = comptes.find((c) => c.code === compteCode);
+      if (!compte) {
+        onChange({ ...value, compte: compteCode });
+        return;
+      }
+
+      onChange({
+        ...value,
         classe: compte.classe.toString(),
         compte: compte.code,
         nature_charge: compte.libelle,
-        centre_cout: value.centre_cout,
       });
-    } else {
-      onChange({ ...value, compte: compteCode });
-    }
-  }, [comptes, value, onChange]);
+    },
+    [comptes, value, onChange]
+  );
 
   const selectedCompte = comptes.find(c => c.code === value.compte);
 
