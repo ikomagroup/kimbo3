@@ -147,9 +147,18 @@ export function PaymentFormDynamic({ value, onChange, disabled = false }: Paymen
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="flex items-center gap-2 text-muted-foreground py-4">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        Chargement...
+        <span className="text-sm">Chargement des modes de paiement...</span>
+      </div>
+    );
+  }
+
+  if (categories.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
+        <p className="text-sm">Aucun mode de paiement configuré.</p>
+        <p className="text-xs mt-1">Contactez l'administrateur pour configurer les modes de paiement.</p>
       </div>
     );
   }

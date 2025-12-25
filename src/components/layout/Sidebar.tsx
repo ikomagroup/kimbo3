@@ -21,6 +21,7 @@ import {
   FolderKanban,
   Receipt,
   Ruler,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -49,6 +50,7 @@ const navItems: NavItem[] = [
       { label: 'Rôles & Permissions', href: '/admin/roles', icon: Shield, roles: ['admin'] },
       { label: 'Unités de mesure', href: '/admin/units', icon: Ruler, roles: ['admin'] },
       { label: 'Modes paiement', href: '/admin/payment-categories', icon: Wallet, roles: ['admin'] },
+      { label: 'Plan comptable', href: '/admin/comptes-comptables', icon: BookOpen, roles: ['admin'] },
       { label: 'Paramètres', href: '/admin/settings', icon: Settings, roles: ['admin'] },
     ],
   },

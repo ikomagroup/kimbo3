@@ -58,10 +58,11 @@ export function SyscohadaFormDynamic({ value, onChange, disabled = false }: Sysc
         .eq('is_active', true)
         .order('code');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching comptes:', error);
+        return;
+      }
       setComptes(data || []);
-    } catch (error) {
-      console.error('Error fetching comptes:', error);
     } finally {
       setIsLoading(false);
     }
@@ -123,9 +124,18 @@ export function SyscohadaFormDynamic({ value, onChange, disabled = false }: Sysc
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="flex items-center gap-2 text-muted-foreground py-4">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        Chargement des comptes...
+        <span className="text-sm">Chargement du plan comptable...</span>
+      </div>
+    );
+  }
+
+  if (comptes.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
+        <p className="text-sm">Aucun compte comptable configuré.</p>
+        <p className="text-xs mt-1">Contactez l'administrateur pour configurer le plan comptable SYSCOHADA.</p>
       </div>
     );
   }
