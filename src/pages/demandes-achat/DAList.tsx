@@ -93,7 +93,7 @@ export default function DAList() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setDemandes((data as DemandeAchat[]) || []);
+      setDemandes((data as unknown as DemandeAchat[]) || []);
     } catch (error: any) {
       console.error('Error fetching DA:', error);
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });

@@ -48,6 +48,7 @@ const navItems: NavItem[] = [
       { label: 'Départements', href: '/admin/departments', icon: Building2, roles: ['admin'] },
       { label: 'Rôles & Permissions', href: '/admin/roles', icon: Shield, roles: ['admin'] },
       { label: 'Unités de mesure', href: '/admin/units', icon: Ruler, roles: ['admin'] },
+      { label: 'Modes paiement', href: '/admin/payment-categories', icon: Wallet, roles: ['admin'] },
       { label: 'Paramètres', href: '/admin/settings', icon: Settings, roles: ['admin'] },
     ],
   },

@@ -671,6 +671,9 @@ export type Database = {
           id: string
           mode_paiement: string | null
           observations: string | null
+          payment_category_id: string | null
+          payment_details: Json | null
+          payment_method_id: string | null
           priced_at: string | null
           priced_by: string | null
           priority: Database["public"]["Enums"]["da_priority"]
@@ -718,6 +721,9 @@ export type Database = {
           id?: string
           mode_paiement?: string | null
           observations?: string | null
+          payment_category_id?: string | null
+          payment_details?: Json | null
+          payment_method_id?: string | null
           priced_at?: string | null
           priced_by?: string | null
           priority?: Database["public"]["Enums"]["da_priority"]
@@ -765,6 +771,9 @@ export type Database = {
           id?: string
           mode_paiement?: string | null
           observations?: string | null
+          payment_category_id?: string | null
+          payment_details?: Json | null
+          payment_method_id?: string | null
           priced_at?: string | null
           priced_by?: string | null
           priority?: Database["public"]["Enums"]["da_priority"]
@@ -825,6 +834,20 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_achat_payment_category_id_fkey"
+            columns: ["payment_category_id"]
+            isOneToOne: false
+            referencedRelation: "payment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_achat_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           },
           {
@@ -1116,6 +1139,9 @@ export type Database = {
           mode_paiement: string | null
           paid_at: string | null
           paid_by: string | null
+          payment_category_id: string | null
+          payment_details: Json | null
+          payment_method_id: string | null
           projet_id: string | null
           reference: string
           reference_paiement: string | null
@@ -1140,6 +1166,9 @@ export type Database = {
           mode_paiement?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          payment_category_id?: string | null
+          payment_details?: Json | null
+          payment_method_id?: string | null
           projet_id?: string | null
           reference: string
           reference_paiement?: string | null
@@ -1164,6 +1193,9 @@ export type Database = {
           mode_paiement?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          payment_category_id?: string | null
+          payment_details?: Json | null
+          payment_method_id?: string | null
           projet_id?: string | null
           reference?: string
           reference_paiement?: string | null
@@ -1192,6 +1224,20 @@ export type Database = {
             columns: ["paid_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_frais_payment_category_id_fkey"
+            columns: ["payment_category_id"]
+            isOneToOne: false
+            referencedRelation: "payment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_frais_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           },
           {
@@ -1265,13 +1311,14 @@ export type Database = {
           },
         ]
       }
-      payment_methods: {
+      payment_categories: {
         Row: {
           code: string
           created_at: string
           id: string
           is_active: boolean
           label: string
+          required_fields: Json | null
           sort_order: number
           updated_at: string
         }
@@ -1281,6 +1328,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label: string
+          required_fields?: Json | null
           sort_order?: number
           updated_at?: string
         }
@@ -1290,10 +1338,55 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
+          required_fields?: Json | null
           sort_order?: number
           updated_at?: string
         }
         Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          category_id: string | null
+          code: string
+          created_at: string
+          extra_fields: Json | null
+          id: string
+          is_active: boolean
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          code: string
+          created_at?: string
+          extra_fields?: Json | null
+          id?: string
+          is_active?: boolean
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          code?: string
+          created_at?: string
+          extra_fields?: Json | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "payment_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permissions: {
         Row: {
