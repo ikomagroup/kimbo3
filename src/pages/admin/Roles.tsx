@@ -97,12 +97,36 @@ export default function AdminRoles() {
     permissions: perms,
   }));
 
+  const makePendingKey = (role: AppRole, permissionId: string) => `${role}::${permissionId}`;
+  const makeLegacyPendingKey = (role: AppRole, permissionId: string) => `${role}-${permissionId}`;
+
+  const parsePendingKey = (key: string): { role: AppRole; permissionId: string } | null => {
+    if (key.includes('::')) {
+      const [roleRaw, permissionId] = key.split('::');
+      const role = roleRaw as AppRole;
+      if (!role || !permissionId || !ALL_ROLES.includes(role)) return null;
+      return { role, permissionId };
+    }
+
+    // Legacy format: `${role}-${permissionId}` (UUID contains dashes)
+    const firstDash = key.indexOf('-');
+    if (firstDash <= 0) return null;
+
+    const role = key.slice(0, firstDash) as AppRole;
+    const permissionId = key.slice(firstDash + 1);
+    if (!role || !permissionId || !ALL_ROLES.includes(role)) return null;
+
+    return { role, permissionId };
+  };
+
   // Check if a role has a permission
   const hasRolePermission = (role: AppRole, permissionId: string): boolean => {
-    const key = `${role}::${permissionId}`;
-    if (pendingChanges.has(key)) {
-      return pendingChanges.get(key)!;
-    }
+    const key = makePendingKey(role, permissionId);
+    const legacyKey = makeLegacyPendingKey(role, permissionId);
+
+    if (pendingChanges.has(key)) return pendingChanges.get(key)!;
+    if (pendingChanges.has(legacyKey)) return pendingChanges.get(legacyKey)!;
+
     return rolePermissions.some(rp => rp.role === role && rp.permission_id === permissionId);
   };
 
@@ -113,11 +137,13 @@ export default function AdminRoles() {
       return;
     }
 
-    const key = `${role}::${permissionId}`;
+    const key = makePendingKey(role, permissionId);
+    const legacyKey = makeLegacyPendingKey(role, permissionId);
     const currentValue = hasRolePermission(role, permissionId);
-    
+
     setPendingChanges(prev => {
       const newMap = new Map(prev);
+      newMap.delete(legacyKey);
       newMap.set(key, !currentValue);
       return newMap;
     });
@@ -136,7 +162,10 @@ export default function AdminRoles() {
       const toRemove: { role: AppRole; permission_id: string }[] = [];
 
       pendingChanges.forEach((newValue, key) => {
-        const [role, permissionId] = key.split('::') as [AppRole, string];
+        const parsed = parsePendingKey(key);
+        if (!parsed) return;
+
+        const { role, permissionId } = parsed;
         const currentlyHas = rolePermissions.some(
           rp => rp.role === role && rp.permission_id === permissionId
         );
