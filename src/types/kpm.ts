@@ -1,6 +1,5 @@
 // KPM SYSTEME - Types & Interfaces
 
-// Legacy AppRole type (pour compatibilité avec l'enum existant)
 export type AppRole = 
   | 'admin'
   | 'dg'
@@ -15,18 +14,6 @@ export type AppRole =
   | 'lecture_seule';
 
 export type UserStatus = 'active' | 'inactive' | 'suspended';
-
-// New dynamic Role interface
-export interface Role {
-  id: string;
-  code: string;
-  label: string;
-  description: string | null;
-  is_active: boolean;
-  is_system: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 export interface Department {
   id: string;
@@ -52,8 +39,7 @@ export interface Profile {
 export interface UserRole {
   id: string;
   user_id: string;
-  role: AppRole | null; // Legacy enum (nullable now)
-  role_id: string | null; // New dynamic role reference
+  role: AppRole;
   assigned_at: string;
   assigned_by: string | null;
 }
@@ -69,8 +55,7 @@ export interface Permission {
 
 export interface RolePermission {
   id: string;
-  role: AppRole | null; // Legacy enum (nullable now)
-  role_id: string | null; // New dynamic role reference
+  role: AppRole;
   permission_id: string;
   created_at: string;
 }

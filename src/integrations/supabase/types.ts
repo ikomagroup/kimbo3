@@ -1671,21 +1671,18 @@ export type Database = {
           id: string
           permission_id: string
           role: Database["public"]["Enums"]["app_role"]
-          role_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           permission_id: string
           role: Database["public"]["Enums"]["app_role"]
-          role_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           permission_id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          role_id?: string | null
         }
         Relationships: [
           {
@@ -1695,47 +1692,7 @@ export type Database = {
             referencedRelation: "permissions"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "role_permissions_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      roles: {
-        Row: {
-          code: string
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean
-          is_system: boolean
-          label: string
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          is_system?: boolean
-          label: string
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          is_system?: boolean
-          label?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       settings: {
         Row: {
@@ -1887,7 +1844,6 @@ export type Database = {
           assigned_by: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
-          role_id: string | null
           user_id: string
         }
         Insert: {
@@ -1895,7 +1851,6 @@ export type Database = {
           assigned_by?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
-          role_id?: string | null
           user_id: string
         }
         Update: {
@@ -1903,18 +1858,9 @@ export type Database = {
           assigned_by?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          role_id?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
@@ -1963,14 +1909,6 @@ export type Database = {
           permission_code: string
         }[]
       }
-      get_user_roles: {
-        Args: { _user_id: string }
-        Returns: {
-          role_code: string
-          role_id: string
-          role_label: string
-        }[]
-      }
       has_permission: {
         Args: { _permission_code: string; _user_id: string }
         Returns: boolean
@@ -1980,10 +1918,6 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
-        Returns: boolean
-      }
-      has_role_by_code: {
-        Args: { _role_code: string; _user_id: string }
         Returns: boolean
       }
       is_achats: { Args: { _user_id: string }; Returns: boolean }

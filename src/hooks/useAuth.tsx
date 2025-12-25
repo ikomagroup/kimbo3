@@ -1,25 +1,17 @@
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { AppRole, Profile, Role } from '@/types/kpm';
-
-interface UserRoleInfo {
-  role_id: string;
-  role_code: string;
-  role_label: string;
-}
+import { AppRole, Profile, UserRole } from '@/types/kpm';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   roles: AppRole[];
-  roleInfos: UserRoleInfo[];
   isLoading: boolean;
   isAdmin: boolean;
   hasRole: (role: AppRole) => boolean;
   hasAnyRole: (checkRoles: AppRole[]) => boolean;
-  hasRoleCode: (code: string) => boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -33,7 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
-  const [roleInfos, setRoleInfos] = useState<UserRoleInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -51,32 +42,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setProfile(profileData as Profile);
 
-      // Fetch roles using the new get_user_roles function
       const { data: rolesData, error: rolesError } = await supabase
-        .rpc('get_user_roles', { _user_id: userId });
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
 
       if (rolesError) {
-        console.error('Error fetching roles via RPC:', rolesError);
-        // Fallback to old method
-        const { data: oldRolesData, error: oldRolesError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId);
-
-        if (!oldRolesError && oldRolesData) {
-          setRoles(oldRolesData.filter(r => r.role).map(r => r.role as AppRole));
-        }
+        console.error('Error fetching roles:', rolesError);
         return;
       }
 
-      // Set both roleInfos and legacy roles array
-      const infos: UserRoleInfo[] = (rolesData || []).map((r: any) => ({
-        role_id: r.role_id,
-        role_code: r.role_code,
-        role_label: r.role_label,
-      }));
-      setRoleInfos(infos);
-      setRoles(infos.map(r => r.role_code as AppRole));
+      setRoles((rolesData || []).map((r: { role: AppRole }) => r.role));
     } catch (error) {
       console.error('Error in fetchProfile:', error);
     }
@@ -154,7 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setRoles([]);
-    setRoleInfos([]);
   };
 
   const refreshProfile = async () => {
@@ -165,8 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasRole = (role: AppRole) => roles.includes(role);
   const hasAnyRole = (checkRoles: AppRole[]) => checkRoles.some(role => roles.includes(role));
-  const hasRoleCode = (code: string) => roleInfos.some(r => r.role_code === code);
-  const isAdmin = hasRole('admin') || hasRoleCode('admin');
+  const isAdmin = hasRole('admin');
 
   return (
     <AuthContext.Provider
@@ -175,12 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         roles,
-        roleInfos,
         isLoading,
         isAdmin,
         hasRole,
         hasAnyRole,
-        hasRoleCode,
         signIn,
         signUp,
         signOut,
