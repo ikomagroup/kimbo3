@@ -144,7 +144,7 @@ export default function CaisseList() {
         code: formData.code,
         name: formData.name,
         type: formData.type,
-        responsable_id: formData.responsable_id || null,
+        responsable_id: formData.responsable_id && formData.responsable_id !== '_none' ? formData.responsable_id : null,
         solde_initial: formData.solde_initial,
         solde_actuel: formData.solde_initial,
         devise: formData.devise,
@@ -180,7 +180,7 @@ export default function CaisseList() {
           code: formData.code,
           name: formData.name,
           type: formData.type,
-          responsable_id: formData.responsable_id || null,
+          responsable_id: formData.responsable_id && formData.responsable_id !== '_none' ? formData.responsable_id : null,
           devise: formData.devise,
           description: formData.description || null,
         })
@@ -338,7 +338,7 @@ export default function CaisseList() {
                       <SelectValue placeholder="Sélectionner..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun</SelectItem>
+                      <SelectItem value="_none">Aucun</SelectItem>
                       {profiles.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.first_name} {p.last_name}
@@ -605,7 +605,7 @@ export default function CaisseList() {
                   <SelectValue placeholder="Sélectionner..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value="_none">Aucun</SelectItem>
                   {profiles.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.first_name} {p.last_name}
