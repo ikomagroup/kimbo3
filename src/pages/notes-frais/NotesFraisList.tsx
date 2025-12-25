@@ -83,7 +83,7 @@ export default function NotesFraisList() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setNotes((data as NoteFrais[]) || []);
+      setNotes((data as unknown as NoteFrais[]) || []);
     } catch (error: any) {
       console.error('Error:', error);
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });

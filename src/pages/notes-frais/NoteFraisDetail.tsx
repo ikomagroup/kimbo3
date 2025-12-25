@@ -131,7 +131,7 @@ export default function NoteFraisDetail() {
       setNote({
         ...data,
         lignes: lignesData || [],
-      } as NoteFraisWithRelations);
+      } as unknown as NoteFraisWithRelations);
     } catch (error: any) {
       console.error('Error:', error);
     } finally {

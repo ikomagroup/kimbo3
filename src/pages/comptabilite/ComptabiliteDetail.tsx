@@ -4,18 +4,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -42,7 +34,6 @@ import {
   DAStatus,
   Fournisseur,
   SYSCOHADA_CLASSES,
-  MODES_PAIEMENT,
 } from '@/types/kpm';
 import { AccessDenied } from '@/components/ui/AccessDenied';
 import {
@@ -62,7 +53,8 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { exportEcritureToPDF } from '@/utils/pdfExport';
 import { DATimeline } from '@/components/ui/DATimeline';
-import { CompteComptableAutocomplete } from '@/components/ui/CompteComptableAutocomplete';
+import { SyscohadaFormDynamic } from '@/components/comptabilite/SyscohadaFormDynamic';
+import { PaymentFormDynamic } from '@/components/comptabilite/PaymentFormDynamic';
 
 export default function ComptabiliteDetail() {
   const { id } = useParams<{ id: string }>();
@@ -83,8 +75,13 @@ export default function ComptabiliteDetail() {
     compte: '',
     nature_charge: '',
     centre_cout: '',
-    mode_paiement: '',
-    reference_paiement: '',
+  });
+  
+  // Formulaire Paiement
+  const [paymentForm, setPaymentForm] = useState({
+    category_id: '',
+    method_id: '',
+    details: {} as Record<string, string>,
   });
 
   const isComptable = roles.includes('comptable');
@@ -169,8 +166,16 @@ export default function ComptabiliteDetail() {
           compte: data.syscohada_compte || '',
           nature_charge: data.syscohada_nature_charge || '',
           centre_cout: data.syscohada_centre_cout || '',
-          mode_paiement: data.mode_paiement || '',
-          reference_paiement: data.reference_paiement || '',
+        });
+      }
+      // Pré-remplir paiement si déjà enregistré
+      if (data.payment_category_id) {
+        setPaymentForm({
+          category_id: data.payment_category_id || '',
+          method_id: data.payment_method_id || '',
+          details: typeof data.payment_details === 'object' && data.payment_details !== null 
+            ? data.payment_details as Record<string, string> 
+            : {},
         });
       }
     } catch (error: any) {
@@ -180,28 +185,28 @@ export default function ComptabiliteDetail() {
     }
   };
 
-  const validateSyscohadaForm = (): boolean => {
+  const validateForms = (): boolean => {
     if (!syscohadaForm.classe) {
-      toast({ title: 'Erreur', description: 'La classe SYSCOHADA est obligatoire.', variant: 'destructive' });
+      toast({ title: 'Données incomplètes', description: 'La classe SYSCOHADA est obligatoire.', variant: 'destructive' });
       return false;
     }
     if (!syscohadaForm.compte.trim()) {
-      toast({ title: 'Erreur', description: 'Le compte comptable est obligatoire.', variant: 'destructive' });
+      toast({ title: 'Données incomplètes', description: 'Le compte comptable est obligatoire.', variant: 'destructive' });
       return false;
     }
     if (!syscohadaForm.nature_charge.trim()) {
-      toast({ title: 'Erreur', description: 'La nature de charge est obligatoire.', variant: 'destructive' });
+      toast({ title: 'Données incomplètes', description: 'La nature de charge est obligatoire.', variant: 'destructive' });
       return false;
     }
-    if (!syscohadaForm.mode_paiement) {
-      toast({ title: 'Erreur', description: 'Le mode de paiement est obligatoire.', variant: 'destructive' });
+    if (!paymentForm.category_id) {
+      toast({ title: 'Données incomplètes', description: 'Le mode de paiement est obligatoire.', variant: 'destructive' });
       return false;
     }
     return true;
   };
 
   const handlePay = async () => {
-    if (!da || !validateSyscohadaForm()) return;
+    if (!da || !validateForms()) return;
     
     setIsSaving(true);
     try {
@@ -213,8 +218,9 @@ export default function ComptabiliteDetail() {
           syscohada_compte: syscohadaForm.compte.trim(),
           syscohada_nature_charge: syscohadaForm.nature_charge.trim(),
           syscohada_centre_cout: syscohadaForm.centre_cout.trim() || null,
-          mode_paiement: syscohadaForm.mode_paiement,
-          reference_paiement: syscohadaForm.reference_paiement.trim() || null,
+          payment_category_id: paymentForm.category_id || null,
+          payment_method_id: paymentForm.method_id || null,
+          payment_details: paymentForm.details,
           comptabilise_by: user?.id,
           comptabilise_at: new Date().toISOString(),
         })
@@ -418,89 +424,22 @@ export default function ComptabiliteDetail() {
                 </div>
               </div>
 
-              {/* Formulaire SYSCOHADA */}
-              <div className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Classe SYSCOHADA *</Label>
-                  <Select 
-                    value={syscohadaForm.classe} 
-                    onValueChange={(v) => setSyscohadaForm({ ...syscohadaForm, classe: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une classe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(SYSCOHADA_CLASSES).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>
-                          Classe {key} - {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Formulaire SYSCOHADA dynamique */}
+              <div className="rounded-lg border bg-card p-4">
+                <SyscohadaFormDynamic
+                  value={syscohadaForm}
+                  onChange={setSyscohadaForm}
+                  disabled={false}
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label>Compte comptable *</Label>
-                  <CompteComptableAutocomplete
-                    value={syscohadaForm.compte}
-                    onChange={(code, compte) => {
-                      setSyscohadaForm({ 
-                        ...syscohadaForm, 
-                        compte: code,
-                        classe: compte ? compte.classe.toString() : syscohadaForm.classe,
-                        nature_charge: compte ? compte.libelle : syscohadaForm.nature_charge,
-                      });
-                    }}
-                    placeholder="Rechercher un compte..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Nature de charge *</Label>
-                  <Input
-                    placeholder="Ex: Achats de marchandises"
-                    value={syscohadaForm.nature_charge}
-                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, nature_charge: e.target.value })}
-                    maxLength={100}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Centre de coût</Label>
-                  <Input
-                    placeholder="Ex: Direction, Production..."
-                    value={syscohadaForm.centre_cout}
-                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, centre_cout: e.target.value })}
-                    maxLength={50}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Mode de paiement *</Label>
-                  <Select 
-                    value={syscohadaForm.mode_paiement} 
-                    onValueChange={(v) => setSyscohadaForm({ ...syscohadaForm, mode_paiement: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MODES_PAIEMENT.map((mode) => (
-                        <SelectItem key={mode} value={mode}>{mode}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Référence paiement</Label>
-                  <Input
-                    placeholder="Ex: CHQ-2024-001"
-                    value={syscohadaForm.reference_paiement}
-                    onChange={(e) => setSyscohadaForm({ ...syscohadaForm, reference_paiement: e.target.value })}
-                    maxLength={50}
-                  />
-                </div>
+              {/* Formulaire Paiement dynamique */}
+              <div className="rounded-lg border bg-card p-4">
+                <PaymentFormDynamic
+                  value={paymentForm}
+                  onChange={setPaymentForm}
+                  disabled={false}
+                />
               </div>
 
               {/* Message d'avertissement */}
@@ -704,9 +643,11 @@ export default function ComptabiliteDetail() {
             <p className="font-medium">
               Classe {syscohadaForm.classe} • {syscohadaForm.compte} • {syscohadaForm.nature_charge}
             </p>
-            <p className="text-sm text-muted-foreground">
-              Mode: {syscohadaForm.mode_paiement}
-            </p>
+            {paymentForm.category_id && (
+              <p className="text-sm text-muted-foreground">
+                Paiement configuré
+              </p>
+            )}
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
