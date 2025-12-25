@@ -16,6 +16,7 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminRoles from "./pages/admin/Roles";
 import AdminUnits from "./pages/admin/Units";
 import AdminPaymentCategories from "./pages/admin/PaymentCategories";
+import AdminComptesComptables from "./pages/admin/ComptesComptables";
 import NotFound from "./pages/NotFound";
 
 // Module Besoins
@@ -100,6 +101,7 @@ function AppRoutes() {
       <Route path="/admin/roles" element={<ProtectedRoute><AdminRoles /></ProtectedRoute>} />
       <Route path="/admin/units" element={<ProtectedRoute><AdminUnits /></ProtectedRoute>} />
       <Route path="/admin/payment-categories" element={<ProtectedRoute><AdminPaymentCategories /></ProtectedRoute>} />
+      <Route path="/admin/comptes-comptables" element={<ProtectedRoute><AdminComptesComptables /></ProtectedRoute>} />
       <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
       
       {/* Module Besoins */}

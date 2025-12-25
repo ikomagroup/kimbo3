@@ -112,13 +112,19 @@ export default function ComptabiliteDetail() {
         .maybeSingle();
 
       if (error || !data) {
-        toast({ title: 'Erreur', description: 'DA introuvable.', variant: 'destructive' });
+        toast({ 
+          title: 'Demande introuvable', 
+          description: 'Cette demande d\'achat n\'existe pas ou a été supprimée.',
+        });
         navigate('/comptabilite');
         return;
       }
 
       if (!['validee_finance', 'payee', 'rejetee_comptabilite'].includes(data.status)) {
-        toast({ title: 'Accès refusé', description: 'Cette DA n\'est pas accessible en comptabilité.', variant: 'destructive' });
+        toast({ 
+          title: 'Accès non autorisé', 
+          description: 'Cette DA n\'est pas encore prête pour le traitement comptable.',
+        });
         navigate('/comptabilite');
         return;
       }
@@ -187,19 +193,19 @@ export default function ComptabiliteDetail() {
 
   const validateForms = (): boolean => {
     if (!syscohadaForm.classe) {
-      toast({ title: 'Données incomplètes', description: 'La classe SYSCOHADA est obligatoire.', variant: 'destructive' });
+      toast({ title: 'Informations incomplètes', description: 'Veuillez sélectionner une classe SYSCOHADA.' });
       return false;
     }
     if (!syscohadaForm.compte.trim()) {
-      toast({ title: 'Données incomplètes', description: 'Le compte comptable est obligatoire.', variant: 'destructive' });
+      toast({ title: 'Informations incomplètes', description: 'Veuillez sélectionner un compte comptable.' });
       return false;
     }
     if (!syscohadaForm.nature_charge.trim()) {
-      toast({ title: 'Données incomplètes', description: 'La nature de charge est obligatoire.', variant: 'destructive' });
+      toast({ title: 'Informations incomplètes', description: 'La nature de charge est requise.' });
       return false;
     }
     if (!paymentForm.category_id) {
-      toast({ title: 'Données incomplètes', description: 'Le mode de paiement est obligatoire.', variant: 'destructive' });
+      toast({ title: 'Mode de paiement requis', description: 'Veuillez sélectionner une catégorie de paiement.' });
       return false;
     }
     return true;
@@ -235,7 +241,7 @@ export default function ComptabiliteDetail() {
       setShowPayDialog(false);
       fetchDA();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur lors de l\'enregistrement', description: 'Veuillez réessayer ou contacter l\'administrateur.' });
     } finally {
       setIsSaving(false);
     }
@@ -262,7 +268,7 @@ export default function ComptabiliteDetail() {
       setShowRejectDialog(false);
       fetchDA();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur lors du rejet', description: 'Veuillez réessayer ou contacter l\'administrateur.' });
     } finally {
       setIsSaving(false);
     }
