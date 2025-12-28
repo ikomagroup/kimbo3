@@ -104,7 +104,7 @@ export default function NoteFraisCreate() {
       const { data: refData } = await supabase.rpc('generate_ndf_reference');
       const reference = refData || `NDF-${Date.now()}`;
 
-      // Create note de frais
+      // Create note de frais - ALWAYS create as 'brouillon' first to allow line insertion
       const { data: noteData, error: noteError } = await supabase
         .from('notes_frais')
         .insert({
@@ -115,15 +115,14 @@ export default function NoteFraisCreate() {
           title: formData.title,
           description: formData.description || null,
           total_amount: totalAmount,
-          status: asBrouillon ? 'brouillon' : 'soumise',
-          submitted_at: asBrouillon ? null : new Date().toISOString(),
+          status: 'brouillon', // Always start as brouillon
         })
         .select()
         .single();
 
       if (noteError) throw noteError;
 
-      // Create lignes
+      // Create lignes (RLS allows this because note is in 'brouillon' status)
       const lignesData = validLignes.map((l) => ({
         note_frais_id: noteData.id,
         date_depense: l.date_depense,
@@ -138,6 +137,19 @@ export default function NoteFraisCreate() {
         .insert(lignesData);
 
       if (lignesError) throw lignesError;
+
+      // If submitting (not saving as brouillon), update status to 'soumise'
+      if (!asBrouillon) {
+        const { error: updateError } = await supabase
+          .from('notes_frais')
+          .update({
+            status: 'soumise',
+            submitted_at: new Date().toISOString(),
+          })
+          .eq('id', noteData.id);
+
+        if (updateError) throw updateError;
+      }
 
       toast({
         title: asBrouillon ? 'Brouillon enregistré' : 'Note soumise',
