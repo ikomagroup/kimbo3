@@ -690,14 +690,14 @@ export default function StockCategories() {
             <div className="space-y-2">
               <Label htmlFor="parent">Catégorie parente</Label>
               <Select
-                value={formData.parent_id}
-                onValueChange={(v) => setFormData({ ...formData, parent_id: v })}
+                value={formData.parent_id || '__none__'}
+                onValueChange={(v) => setFormData({ ...formData, parent_id: v === '__none__' ? '' : v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Aucune (catégorie principale)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucune (catégorie principale)</SelectItem>
+                  <SelectItem value="__none__">Aucune (catégorie principale)</SelectItem>
                   {parentOptions.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {cat.name}

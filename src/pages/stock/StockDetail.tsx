@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { CategorySelector } from '@/components/stock/CategorySelector';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -152,7 +153,7 @@ export default function StockDetail() {
     observations: '',
   });
 
-  // Edit form - now includes quantity_available
+  // Edit form - now includes quantity_available and category_id
   const [editForm, setEditForm] = useState({
     designation: '',
     description: '',
@@ -160,6 +161,7 @@ export default function StockDetail() {
     quantity_available: 0,
     quantity_min: 0,
     location: '',
+    category_id: null as string | null,
   });
 
   const isLogistics = roles.some((r) => LOGISTICS_ROLES.includes(r));
@@ -195,6 +197,7 @@ export default function StockDetail() {
         quantity_available: data.quantity_available,
         quantity_min: data.quantity_min || 0,
         location: data.location || '',
+        category_id: data.category_id || null,
       });
       // Check if unit is custom
       setCustomUnit(!STOCK_UNITS.find(u => u.value === data.unit));
@@ -357,6 +360,7 @@ export default function StockDetail() {
           quantity_available: editForm.quantity_available,
           quantity_min: editForm.quantity_min || null,
           location: editForm.location || null,
+          category_id: editForm.category_id || null,
         })
         .eq('id', article.id);
 
@@ -918,6 +922,16 @@ export default function StockDetail() {
                   className="h-11"
                 />
               </div>
+            </div>
+
+            {/* Catégorie */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Catégorie</Label>
+              <CategorySelector
+                value={editForm.category_id}
+                onChange={(v) => setEditForm({ ...editForm, category_id: v })}
+                placeholder="Sélectionner une catégorie"
+              />
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
