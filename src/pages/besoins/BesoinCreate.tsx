@@ -242,11 +242,18 @@ export default function BesoinCreate() {
         article_stock_id: l.article_stock_id || null,
       }));
 
-      const { error: lignesError } = await supabase
+      const { data: insertedLignes, error: lignesError } = await supabase
         .from('besoin_lignes')
-        .insert(lignesInsert);
+        .insert(lignesInsert)
+        .select();
 
       if (lignesError) throw lignesError;
+      
+      // Check if RLS silently blocked the insert
+      if (!insertedLignes || insertedLignes.length !== lignesInsert.length) {
+        console.error('Lignes insert mismatch:', { expected: lignesInsert.length, inserted: insertedLignes?.length });
+        throw new Error('Impossible de créer les lignes de besoin. Permissions insuffisantes.');
+      }
 
       // 3. Upload et insérer les pièces jointes
       if (attachments.length > 0) {
