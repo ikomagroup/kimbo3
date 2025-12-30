@@ -374,7 +374,62 @@ export default function NoteFraisDetail() {
           </Card>
         )}
 
-        {/* Info */}
+        {/* Paid status - show discharge PDF button */}
+        {note.status === 'payee' && (
+          <Card className="border-success/50 bg-success/5">
+            <CardContent className="flex items-center justify-between gap-4 py-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-success" />
+                <div>
+                  <p className="font-medium text-success">Paiement effectué</p>
+                  <p className="text-sm text-muted-foreground">
+                    {note.paid_at
+                      ? `Payée le ${format(new Date(note.paid_at), 'dd MMMM yyyy', { locale: fr })}`
+                      : 'Cette note de frais a été payée.'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  // Récupérer le nom du comptable
+                  const comptableProfile = (note as any).paid_by_profile;
+                  const comptableFullName = comptableProfile
+                    ? `${comptableProfile.first_name || ''} ${comptableProfile.last_name || ''}`.trim()
+                    : user?.email?.split('@')[0] || 'Comptable';
+                  
+                  // Récupérer les infos de caisse si disponible (payment_details existe en DB mais pas dans le type TS)
+                  const noteAny = note as any;
+                  const paymentDetails = typeof noteAny.payment_details === 'object' && noteAny.payment_details !== null
+                    ? noteAny.payment_details as Record<string, string>
+                    : {};
+                  
+                  exportDechargeComptableToPDF({
+                    type: 'NOTE_FRAIS',
+                    reference: note.reference,
+                    montant: note.total_amount || 0,
+                    currency: note.currency || 'XOF',
+                    caisseName: paymentDetails.caisse_name || 'Caisse',
+                    caisseCode: paymentDetails.caisse_code || 'N/A',
+                    comptableName: comptableFullName,
+                    paidAt: note.paid_at || new Date().toISOString(),
+                    beneficiaire: note.user
+                      ? `${note.user.first_name || ''} ${note.user.last_name || ''}`.trim()
+                      : undefined,
+                    description: note.title,
+                    modePaiement: note.mode_paiement || undefined,
+                    referencePaiement: note.reference_paiement || undefined,
+                  });
+                }}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Décharge PDF
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader className="pb-2">
