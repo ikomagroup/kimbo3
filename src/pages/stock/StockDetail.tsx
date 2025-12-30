@@ -307,6 +307,7 @@ export default function StockDetail() {
         quantity_after: quantityAfter,
         observations: adjustForm.observations || null,
         created_by: user?.id,
+        reference: `ADJ-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${article.id.slice(0, 8).toUpperCase()}`,
       });
 
       if (movementError) throw movementError;
@@ -376,6 +377,7 @@ export default function StockDetail() {
           quantity_after: editForm.quantity_available,
           observations: 'Modification via édition article',
           created_by: user?.id,
+          reference: `EDIT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${article.id.slice(0, 8).toUpperCase()}`,
         });
 
         if (movementError) {

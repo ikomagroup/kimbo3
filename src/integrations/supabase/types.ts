@@ -18,7 +18,7 @@ export type Database = {
         Row: {
           category_id: string | null
           created_at: string
-          created_by: string | null
+          created_by: string
           description: string | null
           designation: string
           id: string
@@ -33,7 +33,7 @@ export type Database = {
         Insert: {
           category_id?: string | null
           created_at?: string
-          created_by?: string | null
+          created_by: string
           description?: string | null
           designation: string
           id?: string
@@ -48,7 +48,7 @@ export type Database = {
         Update: {
           category_id?: string | null
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           description?: string | null
           designation?: string
           id?: string
@@ -554,7 +554,7 @@ export type Database = {
           motif: string
           note_frais_id: string | null
           observations: string | null
-          reference: string | null
+          reference: string
           solde_apres: number
           solde_avant: number
           type: string
@@ -569,7 +569,7 @@ export type Database = {
           motif: string
           note_frais_id?: string | null
           observations?: string | null
-          reference?: string | null
+          reference: string
           solde_apres: number
           solde_avant: number
           type: string
@@ -584,7 +584,7 @@ export type Database = {
           motif?: string
           note_frais_id?: string | null
           observations?: string | null
-          reference?: string | null
+          reference?: string
           solde_apres?: number
           solde_avant?: number
           type?: string
@@ -1104,7 +1104,7 @@ export type Database = {
           classe_syscohada: number
           compte_comptable: string
           created_at: string
-          created_by: string | null
+          created_by: string
           credit: number
           da_id: string
           date_ecriture: string
@@ -1126,7 +1126,7 @@ export type Database = {
           classe_syscohada: number
           compte_comptable: string
           created_at?: string
-          created_by?: string | null
+          created_by: string
           credit?: number
           da_id: string
           date_ecriture?: string
@@ -1148,7 +1148,7 @@ export type Database = {
           classe_syscohada?: number
           compte_comptable?: string
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           credit?: number
           da_id?: string
           date_ecriture?: string
@@ -1244,6 +1244,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      governance_derogations: {
+        Row: {
+          approval_date: string
+          approved_by: string
+          created_at: string
+          derogation_type: string
+          description: string
+          expiration_date: string | null
+          id: string
+          is_active: boolean
+          justification: string
+          review_frequency: string | null
+          role_concerned: string
+          updated_at: string
+        }
+        Insert: {
+          approval_date: string
+          approved_by: string
+          created_at?: string
+          derogation_type: string
+          description: string
+          expiration_date?: string | null
+          id?: string
+          is_active?: boolean
+          justification: string
+          review_frequency?: string | null
+          role_concerned: string
+          updated_at?: string
+        }
+        Update: {
+          approval_date?: string
+          approved_by?: string
+          created_at?: string
+          derogation_type?: string
+          description?: string
+          expiration_date?: string | null
+          id?: string
+          is_active?: boolean
+          justification?: string
+          review_frequency?: string | null
+          role_concerned?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       note_frais_lignes: {
         Row: {
@@ -1852,7 +1897,7 @@ export type Database = {
           quantity: number
           quantity_after: number
           quantity_before: number
-          reference: string | null
+          reference: string
         }
         Insert: {
           article_stock_id: string
@@ -1867,7 +1912,7 @@ export type Database = {
           quantity: number
           quantity_after: number
           quantity_before: number
-          reference?: string | null
+          reference: string
         }
         Update: {
           article_stock_id?: string
@@ -1882,7 +1927,7 @@ export type Database = {
           quantity?: number
           quantity_after?: number
           quantity_before?: number
-          reference?: string | null
+          reference?: string
         }
         Relationships: [
           {
@@ -2087,7 +2132,12 @@ export type Database = {
         | "urgence"
         | "autre"
       besoin_ligne_category: "materiel" | "service" | "transport" | "autre"
-      besoin_status: "cree" | "pris_en_charge" | "accepte" | "refuse"
+      besoin_status:
+        | "cree"
+        | "pris_en_charge"
+        | "accepte"
+        | "refuse"
+        | "retourne"
       besoin_type_enum:
         | "achat"
         | "transport"
@@ -2285,7 +2335,13 @@ export const Constants = {
         "autre",
       ],
       besoin_ligne_category: ["materiel", "service", "transport", "autre"],
-      besoin_status: ["cree", "pris_en_charge", "accepte", "refuse"],
+      besoin_status: [
+        "cree",
+        "pris_en_charge",
+        "accepte",
+        "refuse",
+        "retourne",
+      ],
       besoin_type_enum: [
         "achat",
         "transport",
