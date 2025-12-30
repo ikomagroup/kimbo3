@@ -31,7 +31,7 @@ import {
   BesoinTypeEnum,
   ROLES_CAN_CREATE_BESOIN,
 } from '@/types/kpm';
-import { Plus, Search, Eye, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Search, Eye, AlertTriangle, Clock, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -40,6 +40,7 @@ const statusIcons: Record<BesoinStatus, React.ElementType> = {
   pris_en_charge: AlertTriangle,
   accepte: CheckCircle,
   refuse: XCircle,
+  retourne: RotateCcw,
 };
 
 const statusColors: Record<BesoinStatus, string> = {
@@ -47,6 +48,7 @@ const statusColors: Record<BesoinStatus, string> = {
   pris_en_charge: 'bg-warning/10 text-warning',
   accepte: 'bg-success/10 text-success',
   refuse: 'bg-destructive/10 text-destructive',
+  retourne: 'bg-orange-500/10 text-orange-600',
 };
 
 const urgencyColors: Record<string, string> = {

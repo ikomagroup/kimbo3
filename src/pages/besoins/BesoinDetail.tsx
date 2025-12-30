@@ -76,6 +76,7 @@ const statusColors: Record<string, string> = {
   pris_en_charge: 'bg-warning/10 text-warning border-warning/20',
   accepte: 'bg-success/10 text-success border-success/20',
   refuse: 'bg-destructive/10 text-destructive border-destructive/20',
+  retourne: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
 };
 
 const statusIcons: Record<string, React.ElementType> = {
@@ -83,6 +84,7 @@ const statusIcons: Record<string, React.ElementType> = {
   pris_en_charge: AlertTriangle,
   accepte: CheckCircle,
   refuse: XCircle,
+  retourne: MessageSquareWarning,
 };
 
 interface BesoinWithRelations extends Besoin {
@@ -111,7 +113,8 @@ export default function BesoinDetail() {
   const isLogistics = roles.some((r) => ['responsable_logistique', 'agent_logistique'].includes(r));
   const isDG = roles.includes('dg');
   const isCreator = besoin?.user_id === user?.id;
-  const canEdit = isCreator && besoin?.status === 'cree';
+  const canEdit = isCreator && (besoin?.status === 'cree' || besoin?.status === 'retourne');
+  const canResubmit = isCreator && besoin?.status === 'retourne';
   const canManage = isLogistics || isAdmin;
   const canDelete = isAdmin;
 
@@ -256,7 +259,7 @@ export default function BesoinDetail() {
     }
   };
 
-  // Nouvelle fonction: Retourner le besoin (mal formulé)
+  // Nouvelle fonction: Retourner le besoin (mal formulé) - utilise le VRAI statut 'retourne'
   const handleReturn = async () => {
     if (!besoin || !returnComment.trim()) return;
     setIsSaving(true);
@@ -265,11 +268,14 @@ export default function BesoinDetail() {
       const { error } = await supabase
         .from('besoins')
         .update({
-          status: 'refuse',
-          rejection_reason: `⚠️ BESOIN MAL FORMULÉ - À corriger\n\n${returnComment.trim()}`,
+          status: 'retourne',
           return_comment: returnComment.trim(),
+          rejection_reason: null, // Clear any previous rejection reason
           decided_by: user?.id,
           decided_at: new Date().toISOString(),
+          // Réinitialiser le workflow pour permettre la correction
+          taken_by: null,
+          taken_at: null,
         })
         .eq('id', besoin.id);
 
@@ -277,9 +283,40 @@ export default function BesoinDetail() {
 
       toast({ 
         title: 'Besoin retourné au demandeur', 
-        description: 'Le demandeur a été notifié et devra soumettre un nouveau besoin corrigé.' 
+        description: 'Le demandeur peut maintenant corriger et resoumettre son besoin.' 
       });
       setShowReturnDialog(false);
+      setReturnComment('');
+      fetchBesoin();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Fonction pour resoumettre un besoin retourné (par le créateur)
+  const handleResubmit = async () => {
+    if (!besoin) return;
+    setIsSaving(true);
+
+    try {
+      const { error } = await supabase
+        .from('besoins')
+        .update({
+          status: 'cree',
+          return_comment: null, // Clear the return comment
+          decided_by: null,
+          decided_at: null,
+        })
+        .eq('id', besoin.id);
+
+      if (error) throw error;
+
+      toast({ 
+        title: 'Besoin resoumis', 
+        description: 'Votre besoin a été resoumis et sera examiné par la Logistique.' 
+      });
       fetchBesoin();
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
@@ -375,7 +412,7 @@ export default function BesoinDetail() {
   if (!besoin) return null;
 
   const StatusIcon = statusIcons[besoin.status];
-  const isReturnedBesoin = besoin.return_comment || besoin.rejection_reason?.includes('BESOIN MAL FORMULÉ');
+  const isReturnedBesoin = besoin.status === 'retourne';
 
   // Transform lignes to the format expected by BesoinLignesTable
   const lignesForDisplay = (besoin.lignes || []).map(l => ({
@@ -457,19 +494,40 @@ export default function BesoinDetail() {
           </div>
         </div>
 
-        {/* Rejection/Return reason */}
-        {besoin.status === 'refuse' && besoin.rejection_reason && (
-          <Card className={`${isReturnedBesoin ? 'border-warning/50 bg-warning/5' : 'border-destructive/50 bg-destructive/5'}`}>
+        {/* Returned besoin - message for creator */}
+        {besoin.status === 'retourne' && besoin.return_comment && (
+          <Card className="border-orange-500/50 bg-orange-500/5">
             <CardContent className="flex items-start gap-3 py-4">
-              {isReturnedBesoin ? (
-                <MessageSquareWarning className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-              ) : (
-                <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-              )}
+              <MessageSquareWarning className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
+              <div className="flex-1">
+                <p className="font-medium text-orange-600">Besoin à corriger</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap mt-1">{besoin.return_comment}</p>
+                {isCreator && (
+                  <div className="mt-4 flex gap-2">
+                    <Link to={`/besoins/${id}/modifier`}>
+                      <Button variant="outline" size="sm">
+                        <Edit className="mr-2 h-4 w-4" />
+                        Modifier le besoin
+                      </Button>
+                    </Link>
+                    <Button size="sm" onClick={handleResubmit} disabled={isSaving}>
+                      <Play className="mr-2 h-4 w-4" />
+                      Resoumettre
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Rejection reason (only for truly rejected besoins) */}
+        {besoin.status === 'refuse' && besoin.rejection_reason && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="flex items-start gap-3 py-4">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
               <div>
-                <p className={`font-medium ${isReturnedBesoin ? 'text-warning' : 'text-destructive'}`}>
-                  {isReturnedBesoin ? 'Besoin à corriger' : 'Motif du refus'}
-                </p>
+                <p className="font-medium text-destructive">Motif du refus</p>
                 <p className="text-sm text-foreground whitespace-pre-wrap">{besoin.rejection_reason}</p>
               </div>
             </CardContent>
