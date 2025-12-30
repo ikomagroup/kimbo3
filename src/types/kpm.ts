@@ -143,7 +143,7 @@ export type BesoinLigneCategory = 'materiel' | 'service' | 'transport' | 'autre'
 // Legacy types (pour compatibilité)
 export type BesoinCategory = 'materiel' | 'service' | 'maintenance' | 'urgence' | 'autre';
 export type BesoinUrgency = 'normale' | 'urgente' | 'critique';
-export type BesoinStatus = 'cree' | 'pris_en_charge' | 'accepte' | 'refuse';
+export type BesoinStatus = 'cree' | 'pris_en_charge' | 'accepte' | 'refuse' | 'retourne';
 export type BesoinType = 'article' | 'service';
 
 // Interface Ligne de Besoin (Bloc C)
@@ -280,6 +280,7 @@ export const BESOIN_STATUS_LABELS: Record<BesoinStatus, string> = {
   pris_en_charge: 'Pris en charge',
   accepte: 'Accepté',
   refuse: 'Refusé',
+  retourne: 'À corriger',
 };
 
 // Objets interdits dans le champ objet_besoin
